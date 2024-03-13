@@ -1,0 +1,11 @@
+@import "taiga-ui-local";
+
+:host{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  & tui-island{
+    max-width: 400px;
+    margin-top: 200px;
+  }
+}
