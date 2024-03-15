@@ -1,14 +1,16 @@
-import {ChangeDetectionStrategy, Component, OnInit, ViewChild} from '@angular/core';
-import {ActivatedRoute} from "@angular/router";
-import {map} from "rxjs";
-import {AsyncPipe} from "@angular/common";
+import {ChangeDetectionStrategy, Component, DestroyRef, Inject, OnInit, ViewChild} from '@angular/core';
+import {AsyncPipe, JsonPipe, NgForOf} from "@angular/common";
 import {MonacoEditorModule, NGX_MONACO_EDITOR_CONFIG} from "ngx-monaco-editor-v2";
 import {FormsModule} from "@angular/forms";
 import * as m from '@convergencelabs/monaco-collab-ext';
 import {RemoteSelectionManager} from '@convergencelabs/monaco-collab-ext';
 import {EditorComponent} from "ngx-monaco-editor-v2/lib/editor.component";
-import {Peer} from 'peerjs'
-import {RoomService} from "./room.service";
+import {RoomConnectionService} from "./room-connection.service";
+import {TuiBadgeModule} from "@taiga-ui/kit";
+import {RoomRemoteService} from "./room-remote.service";
+import {Operation, OPERATIONS_IN, OPERATIONS_OUT} from "../common/operations";
+import {BehaviorSubject, filter, takeUntil} from "rxjs";
+import {TuiDestroyService} from "@taiga-ui/cdk";
 
 @Component({
   selector: 'app-room',
@@ -18,71 +20,59 @@ import {RoomService} from "./room.service";
   imports: [
     AsyncPipe,
     MonacoEditorModule,
-    FormsModule
+    FormsModule,
+    NgForOf,
+    TuiBadgeModule,
+    JsonPipe
   ],
   providers: [
-    RoomService,
+    RoomConnectionService,
+    RoomRemoteService,
     {provide: NGX_MONACO_EDITOR_CONFIG, useValue: {
         baseUrl: 'assets', // configure base path for monaco editor. Starting with version 8.0.0 it defaults to './assets'. Previous releases default to '/assets'
         defaultOptions: { scrollBeyondLastLine: false }, // pass default options to be used
         requireConfig: { preferScriptTags: true }, // allows to oweride configuration passed to monacos loader
         monacoRequire: (<any>window).monacoRequire
-      }}
+      }},
+    {
+      provide: OPERATIONS_IN,
+      useValue: new BehaviorSubject<Operation | null>(null),
+    },
+    {
+      provide: OPERATIONS_OUT,
+      useValue: new BehaviorSubject<Operation | null>(null),
+    },
+    TuiDestroyService
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-
-export class AppRoomComponent implements OnInit {
+export class AppRoomComponent {
   @ViewChild('editor') public readonly editor: EditorComponent | undefined;
   editorOptions = {theme: 'vs-dark', language: 'typescript', minimap: {
       enabled: false,
     }, cursorWidth: 20, cursorBlinking: true, };
-  roomId$ = this.activatedRouter.paramMap.pipe(map((e)=> e.get('roomId')))
-  constructor(private readonly activatedRouter: ActivatedRoute) {
+
+  users$ = this.room.users$;
+  constructor(
+    private readonly room: RoomConnectionService,
+    private readonly roomRemote: RoomRemoteService,
+    private readonly destroyRef$: TuiDestroyService,
+    @Inject(OPERATIONS_IN) private readonly opInStream: BehaviorSubject<Operation| null>,
+    @Inject(OPERATIONS_OUT) private readonly opOutStream: BehaviorSubject<Operation| null>
+  ) {
   }
+  initEditor(e: unknown){
+    if(this.editor?.['_editor']){
+      this.roomRemote.init(this.editor?.['_editor']);
+    }
 
-  ngOnInit() {
-
-
-
-    this.roomId$.subscribe((e)=>{
-
-      const peer = new Peer(e as string, {
-        host: "localhost",
-        port: 3300,
-        path: "/v1/peer",
-      });
+    this.opOutStream.pipe(
+      filter((op): op is Operation=> !!op),
+      takeUntil(this.destroyRef$)
+    )
+      .subscribe((op)=>{
+        console.log('to broadcast', op);
+        this.room.broadcast({type: op.type, data: {...op.data,self: false}})
     })
-  }
-
-  changeModel(data: string){
-    console.log(data);
-  }
-  initedEditor(e: unknown){
-
-    const f = new m.RemoteCursorManager({
-      editor: this.editor?.['_editor'],
-      tooltips: true,
-      tooltipDuration: 3
-    });
-
-
-    const r = new RemoteSelectionManager({
-      editor: this.editor?.['_editor']
-    })
-    // r.addSelection('p', )
-    const p = new m.EditorContentManager({
-      editor: this.editor?.['_editor'],
-      onInsert: (index: number, text: string) => console.log(index, text),
-      onReplace: (index: number, length: number, text: string) => console.log(index,length, text),
-      onDelete: (index: number, length: number) => console.log(index, length),
-    })
-
-
-
-    f.addCursor('p', '#34a0ffa1', 'label');
-    f.showCursor('p');
-    f.setCursorPosition('p', {lineNumber: 2, column: 3});
-    setTimeout(()=>f.setCursorPosition('p', {lineNumber: 3, column: 3}), 1000)
   }
 }

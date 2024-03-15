@@ -1,8 +1,12 @@
 import {ChangeDetectionStrategy, Component} from '@angular/core';
-import {TuiIslandModule} from "@taiga-ui/kit";
+import {TuiInputModule, TuiIslandModule} from "@taiga-ui/kit";
 import {TuiButtonModule} from "@taiga-ui/core";
 import { v4 } from "uuid";
 import {Router} from "@angular/router";
+import {FormControl, FormsModule, ReactiveFormsModule, Validators} from "@angular/forms";
+import {async, map, startWith} from "rxjs";
+import {main} from "@angular/compiler-cli/src/main";
+import {AsyncPipe} from "@angular/common";
 
 @Component({
   selector: 'app-start',
@@ -10,7 +14,11 @@ import {Router} from "@angular/router";
   templateUrl: './start.component.html',
   imports: [
     TuiIslandModule,
-    TuiButtonModule
+    TuiButtonModule,
+    TuiInputModule,
+    FormsModule,
+    ReactiveFormsModule,
+    AsyncPipe
   ],
   styleUrls: ['./start.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -20,8 +28,7 @@ export class AppStartComponent {
   constructor(private readonly router: Router) {
   }
   createRoom(): Promise<unknown> {
-    const roomId = v4();
-    const navigation = this.router.createUrlTree(['room', roomId]);
+    const navigation = this.router.createUrlTree(['room', 'create']);
     return this.router.navigateByUrl(navigation);
   }
 }
