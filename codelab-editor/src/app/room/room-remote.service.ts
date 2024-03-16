@@ -1,9 +1,10 @@
 import {Inject, Injectable} from '@angular/core';
-import {EditorContentManager, RemoteCursorManager, RemoteSelectionManager} from "@convergencelabs/monaco-collab-ext";
-import * as monaco from "monaco-editor";
 import {Operation, OPERATIONS_IN, OPERATIONS_OUT, OperationType} from "../common/operations";
 import {BehaviorSubject, filter, tap} from "rxjs";
 import {RoomContextService} from "./room-context.service";
+import {RemoteCursorManager} from "../remote-lib/RemoteCursorManager";
+import {RemoteSelectionManager} from "../remote-lib/RemoteSelectionManager";
+import {EditorContentManager} from "../remote-lib/EditorContentManager";
 
 @Injectable()
 export class RoomRemoteService{
@@ -25,17 +26,17 @@ export class RoomRemoteService{
     })
 
     this.cursor = new RemoteCursorManager({
-      editor: editor,
+      editor: editor as any,
       tooltips: true,
       tooltipDuration: 3
     });
 
     this.selection = new RemoteSelectionManager({
-      editor: editor
+      editor: editor as any
     });
 
     this.editor = new EditorContentManager({
-      editor: editor,
+      editor: editor as any,
       onInsert: (index: number, text: string) => this.onInsert(index,text) ,
       onReplace: (index: number, length: number, text: string) => this.onReplace(index, length, text),
       onDelete: (index: number, length: number) => this.onDelete(index, length),

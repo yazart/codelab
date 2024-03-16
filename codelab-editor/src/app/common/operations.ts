@@ -1,7 +1,6 @@
 import {User} from "../room/user";
 import {InjectionToken} from "@angular/core";
 import {BehaviorSubject} from "rxjs";
-import * as monaco from "monaco-editor";
 
 export enum OperationType {
   Connect = 'connect',

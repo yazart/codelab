@@ -1,6 +1,6 @@
 <div class="container">
-  <div class="editor">
-    <ngx-monaco-editor #editor [options]="editorOptions" (onInit)="initEditor($event)"></ngx-monaco-editor>
+  <div class="editor" #editor>
+
   </div>
   <div class="run">
     <ng-container *ngFor="let user of users$ | async">

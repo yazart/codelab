@@ -1,10 +1,15 @@
-import {ChangeDetectionStrategy, Component, DestroyRef, Inject, OnInit, ViewChild} from '@angular/core';
+import {
+  AfterContentInit, AfterViewInit,
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  ElementRef,
+  Inject,
+  OnInit,
+  ViewChild
+} from '@angular/core';
 import {AsyncPipe, JsonPipe, NgForOf} from "@angular/common";
-import {MonacoEditorModule, NGX_MONACO_EDITOR_CONFIG} from "ngx-monaco-editor-v2";
 import {FormsModule} from "@angular/forms";
-import * as m from '@convergencelabs/monaco-collab-ext';
-import {RemoteSelectionManager} from '@convergencelabs/monaco-collab-ext';
-import {EditorComponent} from "ngx-monaco-editor-v2/lib/editor.component";
 import {RoomConnectionService} from "./room-connection.service";
 import {TuiBadgeModule} from "@taiga-ui/kit";
 import {RoomRemoteService} from "./room-remote.service";
@@ -19,7 +24,6 @@ import {TuiDestroyService} from "@taiga-ui/cdk";
   standalone: true,
   imports: [
     AsyncPipe,
-    MonacoEditorModule,
     FormsModule,
     NgForOf,
     TuiBadgeModule,
@@ -28,12 +32,6 @@ import {TuiDestroyService} from "@taiga-ui/cdk";
   providers: [
     RoomConnectionService,
     RoomRemoteService,
-    {provide: NGX_MONACO_EDITOR_CONFIG, useValue: {
-        baseUrl: 'assets', // configure base path for monaco editor. Starting with version 8.0.0 it defaults to './assets'. Previous releases default to '/assets'
-        defaultOptions: { scrollBeyondLastLine: false }, // pass default options to be used
-        requireConfig: { preferScriptTags: true }, // allows to oweride configuration passed to monacos loader
-        monacoRequire: (<any>window).monacoRequire
-      }},
     {
       provide: OPERATIONS_IN,
       useValue: new BehaviorSubject<Operation | null>(null),
@@ -46,11 +44,18 @@ import {TuiDestroyService} from "@taiga-ui/cdk";
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class AppRoomComponent {
-  @ViewChild('editor') public readonly editor: EditorComponent | undefined;
-  editorOptions = {theme: 'vs-dark', language: 'typescript', minimap: {
+export class AppRoomComponent implements AfterViewInit{
+  @ViewChild('editor') public readonly editor: ElementRef | undefined;
+  editorM: monaco.editor.ICodeEditor | undefined;
+
+  editorOptions = {
+    theme: 'vs-dark',
+    language: 'typescript',
+    minimap: {
       enabled: false,
-    }, cursorWidth: 20, cursorBlinking: true, };
+    },
+    cursorWidth: 5,
+  };
 
   users$ = this.room.users$;
   constructor(
@@ -61,9 +66,15 @@ export class AppRoomComponent {
     @Inject(OPERATIONS_OUT) private readonly opOutStream: BehaviorSubject<Operation| null>
   ) {
   }
-  initEditor(e: unknown){
-    if(this.editor?.['_editor']){
-      this.roomRemote.init(this.editor?.['_editor']);
+
+  ngAfterViewInit(): void {
+    this.editorM = monaco.editor.create(this.editor?.nativeElement, this.editorOptions);
+    this.initEditor();
+    }
+
+  initEditor(){
+    if(this.editorM){
+      this.roomRemote.init(this.editorM);
     }
 
     this.opOutStream.pipe(

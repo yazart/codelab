@@ -1,5 +1,5 @@
-import {RemoteCursor} from "@convergencelabs/monaco-collab-ext/typings/RemoteCursor";
-import {RemoteSelection} from "@convergencelabs/monaco-collab-ext/typings/RemoteSelection";
+import {RemoteCursor} from "../remote-lib/RemoteCursor";
+import {RemoteSelection} from "../remote-lib/RemoteSelection";
 
 export type User = {
   name: string,
