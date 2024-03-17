@@ -16,6 +16,7 @@ import {RoomRemoteService} from "./room-remote.service";
 import {Operation, OPERATIONS_IN, OPERATIONS_OUT} from "../common/operations";
 import {BehaviorSubject, filter, takeUntil} from "rxjs";
 import {TuiDestroyService} from "@taiga-ui/cdk";
+import {User} from "./user";
 
 @Component({
   selector: 'app-room',
@@ -57,7 +58,7 @@ export class AppRoomComponent implements AfterViewInit{
     cursorWidth: 5,
   };
 
-  users$ = this.room.users$;
+  users$ = new BehaviorSubject<User[]>([]);
   constructor(
     private readonly room: RoomConnectionService,
     private readonly roomRemote: RoomRemoteService,
@@ -83,7 +84,7 @@ export class AppRoomComponent implements AfterViewInit{
     )
       .subscribe((op)=>{
         console.log('to broadcast', op);
-        this.room.broadcast({type: op.type, data: {...op.data,self: false}})
+        this.room.sendAll(op)
     })
   }
 }

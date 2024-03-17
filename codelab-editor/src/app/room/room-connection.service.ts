@@ -1,189 +1,104 @@
 import {Inject, Injectable} from '@angular/core';
-import {DataConnection, Peer} from "peerjs";
 import {RoomContextService} from "./room-context.service";
-import {BehaviorSubject} from "rxjs";
-import {User} from "./user";
 import {RoomRemoteService} from "./room-remote.service";
 import {Operation, OPERATIONS_IN, OperationType} from "../common/operations";
+import {BehaviorSubject} from "rxjs";
+import {DataConnection, Peer} from "peerjs";
+import {User} from "./user";
+import {getUserColor} from "./color-palete";
 
 @Injectable()
 export class RoomConnectionService {
-  onPeerDisconnected: ((peerId: string) => void) = ()=>{};
-  onOpen: (id: string) => void = ()=>{
-    this.connectToTarget(this.context.roomId);
-  }
-  private network: Set<DataConnection> = new Set<DataConnection>();
-  private users = new Map<string, User>([[this.context.connectionId, {id: this.context.connectionId, name: this.context.name}]])
-  private peer: Peer | undefined;
-  users$ =new BehaviorSubject([...this.users.values()])
+  // create peer
+  peer = new Peer(this.context.connectionId, {
+    host: "localhost",
+    port: 3300,
+    path: "api/v1/peer",
+  });
+
+  network = new Map<string, DataConnection>();
+  users = new Map<string, User>();
+
   constructor(
     private readonly context: RoomContextService,
     private readonly remote: RoomRemoteService,
     @Inject(OPERATIONS_IN) private readonly opStream: BehaviorSubject<Operation | null>
   ) {
-    this.peer = new Peer(this.context.connectionId, {
-      host: "localhost",
-      port: 3300,
-      path: "/v1/peer",
-    });
-    this._onOpen();
+    this.open();
+
   }
 
-  private _onOpen() {
-    this.peer?.on('open', (id) => {
-      console.info('Peer ID: ' + id);
-      this.onPeerConnection();
-      this.onOpen(id);
-    });
-  }
-
-  /**
-   *  Connect to a target, and requests for the initial data;
-   *
-   * @param {string} targetPeerId
-   * @memberof Broadcast
-   */
-  connectToTarget(targetPeerId: string, loadInitialData = true) {
-    // console.log(`connecting to ${targetPeerId} ...`);
-    const conn = this.peer?.connect(targetPeerId);
-    conn?.on('open', () => {
-      console.log(`==> connected to ${targetPeerId}`);
-      this.addToNetwork(conn, false);
-      if (loadInitialData) {
-        conn.send({ type: 'load' });
+  open():void {
+    this.peer.on('open', (id: string)=>{
+      console.log('[PEER ID]:', id);
+      this.addConnectionListener();
+      if(!this.context.isHost) {
+        this.connectTo(this.context.roomId);
       }
-      this.onData(conn);
-      this.onConnClose(conn);
-    });
+    })
   }
 
-  private onPeerConnection() {
-    this.peer?.on('connection', (conn) => {
-      console.log(`<== receive connection from ${conn.peer}`);
-      this.addToNetwork(conn, true);
+  connectTo(id: string): void {
+    const conn = this.peer.connect(id);
+    conn.on('open', () => {
+      console.log(`==> connected to ${id}`);
+      conn.on('data', (data)=>{
+        this.receiveData(conn.peer, data);
+      })
+      conn.on('close', () => {
+        this.removeClient(conn);
+      });
+    });
+
+  }
+
+  addConnectionListener() {
+    this.peer.on('connection', (conn) => {
+      console.log(`[ NEW CONNECTION FROM ]: ${conn.peer}`);
+      this.addClient(conn);
       conn.on('open', () => {
-        this.onData(conn);
-        this.onConnClose(conn);
-      });
-    });
-  }
-
-  broadcast(op: {type: string, data: any}) {
-    this.network
-      .forEach(c => {
-        console.log('send', c.peer, 'from', this.peer?.id);
-        if(c.peer !== this.peer?.id){
-          if(op.data.userId){
-            if(op.data.userId!== c.peer){
-              c.send(op);
-            }
-          }else {
-            c.send(op);
-          }
+        conn.on('data', (data)=>{
+          this.receiveData(conn.peer, data);
+        })
+        conn.on('close', () => {
+          this.removeClient(conn);
+        });
+        if(this.context.isHost) {
+          this.sendAll({type: OperationType.UserList, data: [...this.users.values()].map((u)=>({
+              id: u.id,
+              name: u.name,
+              color: u.color,
+            })) })
         }
       });
-  }
-
-  private addToNetwork(conn: DataConnection, broadcast: boolean) {
-    if (!!conn) {
-      this.network.add(conn);
-      this.broadcast({
-        type: 'whoami',
-        data: {
-          id: this.context.connectionId,
-          name: this.context.name,
-        }
-      });
-      if (broadcast) {
-        console.log(`broadcasting ADD_TO_NETWORK:[${conn.peer}]`)
-        this.broadcast({
-          type: 'add-to-network',
-          data: conn.peer,
-        });
-
-      }
-      this.logInfo();
-    }
-  }
-
-  private removeConnection(conn: DataConnection) {
-    if (this.network.has(conn)) {
-      this.network.delete(conn);
-    }
-    this.logInfo();
-  }
-
-  private onData(conn: DataConnection) {
-    // Receive messages
-    conn.on('data', (d: unknown) => {
-      // console.log(`Received from ${conn.peer}`, JSON.stringify(d, null, 4));
-      const {type, data} = d as {type: string, data: User};
-
-      if(type ==='whoami'){
-        console.log('here',d);
-
-        this.updateUserList(data);
-        this.broadcast({
-          type: 'userList',
-          data: [...this.users.values()]
-        });
-      }
-      if(type === 'userList'){
-        console.log('userList')
-        const users = [...data as unknown as User[]];
-        users.forEach((e)=> this.updateUserList(e));
-      }
-
-      if(type === OperationType.InsertText){
-        console.log('from Broadcast', d);
-        this.opStream.next({type: OperationType.InsertText, data: {...data} as unknown as any})
-      }
-      if(type === OperationType.ReplaceText){
-        console.log('from Broadcast', d);
-        this.opStream.next({type: OperationType.ReplaceText, data: {...data} as unknown as any})
-      }
-      if(type === OperationType.DeleteText){
-        console.log('from Broadcast', d);
-        this.opStream.next({type: OperationType.DeleteText, data: {...data} as unknown as any})
-      }
-
-      if(type === OperationType.SelectText){
-        console.log('from Broadcast', d);
-        //this.opStream.next({type: OperationType.SelectText, data: {...data} as unknown as any})
-      }
-      if(type === OperationType.MoveCursor){
-        console.log('from Broadcast', d);
-        //this.opStream.next({type: OperationType.MoveCursor, data: {...data} as unknown as any})
-      }
-
-
     });
   }
 
-  private onConnClose(conn: DataConnection) {
-    conn.on('close', () => {
-      this.removeConnection(conn);
-      this.onPeerDisconnected && this.onPeerDisconnected(conn.peer);
-    });
+  receiveData(from: string, data: unknown): void {
+    console.log('from', from, 'data', JSON.stringify(data));
   }
 
-  private logInfo() {
-    console.log(`network:[${[...this.network.values()].map(a => a.peer)}]`);
+  addClient(connection: DataConnection):void {
+    this.network.set(connection.peer, connection);
+    this.users.set(connection.peer, {id: connection.peer, color: getUserColor(), name: ''})
   }
-  private updateUserList(data: User) {
-    if(this.users.has(data.id)){
-      const user = this.users.get(data.id);
-      if(user && !user.cursor){
-        user.cursor = this.remote.cursor?.addCursor(user.id, 'red', user.name);
-      }
-      if(user && !user.selection){
-        user.selection = this.remote.selection?.addSelection(user.id, 'red', user.name);
-      }
-    }else{
-      const cursor = this.remote.cursor?.addCursor(data.id, 'red', data.name);
-      const selection  = this.remote.selection?.addSelection(data.id, 'red', data.name);
-      this.users.set(data.id, {...data, cursor, selection});
+  removeClient(connection: DataConnection): void {
+    this.network.delete(connection.peer);
+    this.users.delete(connection.peer)
+  }
+
+
+  sendTo(id: string, data: Operation){
+    if(this.network.has(id)){
+      this.network.get(id)?.send(data);
     }
-    this.users$.next([...this.users.values()])
   }
+
+  sendAll(operation: Operation) {
+    for(let peer of this.network.values()){
+      peer.send(operation);
+    }
+  }
+
+
 }

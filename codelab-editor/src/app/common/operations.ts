@@ -3,9 +3,10 @@ import {InjectionToken} from "@angular/core";
 import {BehaviorSubject} from "rxjs";
 
 export enum OperationType {
-  Connect = 'connect',
   Logout = 'logout',
   UserList = 'user-list',
+  GetState = 'get-state',
+  State = 'state',
   SelectText = 'select',
   InsertText = 'insert',
   ReplaceText = 'replace',
@@ -14,12 +15,6 @@ export enum OperationType {
   DeleteText = 'delete'
 }
 
-export type OperationConnect = {
-  type: OperationType.Connect,
-  data: {
-    userId: string,
-  }
-}
 export type OperationLogout = {
   type: OperationType.Logout,
   data: {
@@ -58,7 +53,7 @@ export type OperationSelection = {
 }
 
 
-export type Operation = OperationEditor | OperationUserList | OperationLogout | OperationConnect | OperationCursor | OperationSelection;
+export type Operation = OperationEditor | OperationUserList | OperationLogout | OperationCursor | OperationSelection;
 
 
 export const OPERATIONS_IN = new InjectionToken<BehaviorSubject<Operation | null>>('stream operations to broadcast');
