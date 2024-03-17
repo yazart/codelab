@@ -45,6 +45,10 @@ export class RoomRemoteService{
       .pipe(
         tap((r)=> console.log(r)),
         filter((x): x is Operation=>!!x),
+        filter((x)=> {
+          const {userId} = Object.assign({userId: undefined}, x.data);
+          return userId === undefined || userId !== this.context.connectionId;
+        })
       )
       .subscribe((operation)=>{
         this.executeOperation(operation);

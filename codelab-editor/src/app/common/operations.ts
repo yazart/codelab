@@ -4,6 +4,7 @@ import {BehaviorSubject} from "rxjs";
 
 export enum OperationType {
   Logout = 'logout',
+  Whoami = 'whoami',
   UserList = 'user-list',
   GetState = 'get-state',
   State = 'state',
@@ -13,6 +14,11 @@ export enum OperationType {
   Read = 'read',
   MoveCursor = 'move-cursor',
   DeleteText = 'delete'
+}
+
+export type OperationWhoami = {
+  type: OperationType.Whoami,
+  data: Pick<User, 'id' | 'name' | 'color'>
 }
 
 export type OperationLogout = {
@@ -53,7 +59,7 @@ export type OperationSelection = {
 }
 
 
-export type Operation = OperationEditor | OperationUserList | OperationLogout | OperationCursor | OperationSelection;
+export type Operation = OperationWhoami | OperationEditor | OperationUserList | OperationLogout | OperationCursor | OperationSelection;
 
 
 export const OPERATIONS_IN = new InjectionToken<BehaviorSubject<Operation | null>>('stream operations to broadcast');
