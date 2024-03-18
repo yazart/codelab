@@ -17,6 +17,7 @@ import {Operation, OPERATIONS_IN, OPERATIONS_OUT} from "../common/operations";
 import {BehaviorSubject, filter, takeUntil} from "rxjs";
 import {TuiDestroyService} from "@taiga-ui/cdk";
 import {User} from "./user";
+import {TuiButtonModule, TuiGroupModule} from "@taiga-ui/core";
 
 @Component({
   selector: 'app-room',
@@ -28,7 +29,9 @@ import {User} from "./user";
     FormsModule,
     NgForOf,
     TuiBadgeModule,
-    JsonPipe
+    JsonPipe,
+    TuiButtonModule,
+    TuiGroupModule
   ],
   providers: [
     RoomConnectionService,
@@ -47,6 +50,7 @@ import {User} from "./user";
 })
 export class AppRoomComponent implements AfterViewInit{
   @ViewChild('editor') public readonly editor: ElementRef | undefined;
+  @ViewChild('frame') public readonly frame: ElementRef | undefined;
   editorM: monaco.editor.ICodeEditor | undefined;
 
   editorOptions = {
@@ -54,11 +58,10 @@ export class AppRoomComponent implements AfterViewInit{
     language: 'typescript',
     minimap: {
       enabled: false,
-    },
-    cursorWidth: 5,
+    }
   };
 
-  users$ = new BehaviorSubject<User[]>([]);
+  users$ = this.room.users$;
   constructor(
     private readonly room: RoomConnectionService,
     private readonly roomRemote: RoomRemoteService,
@@ -86,5 +89,15 @@ export class AppRoomComponent implements AfterViewInit{
         console.log('to broadcast', op);
         this.room.sendAll(op)
     })
+  }
+  runCode(){
+    const data = this.editorM?.getModel()?.getValue();
+    console.log(data);
+    this.frame?.nativeElement.contentWindow.postMessage(data, window.location.origin);
+  }
+  reload() {
+    if(this.frame?.nativeElement){
+      this.frame.nativeElement.src = 'assets/run.html';
+    }
   }
 }

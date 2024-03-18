@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <script>
+    const workerFile = window.URL.createObjectURL(
+        new Blob(
+          [
+            "\n        importScripts('https://unpkg.com/typescript@latest')\n\n        const load = sourceUrl => {\n          const xhr = XMLHttpRequest\n            ? new XMLHttpRequest()\n            : ActiveXObject\n            ? new ActiveXObject('Microsoft.XMLHTTP')\n            : null\n\n          if (!xhr) return ''\n\n          xhr.open('GET', sourceUrl, false)\n          xhr.overrideMimeType && xhr.overrideMimeType('text/plain')\n          xhr.send(null)\n          return xhr.status == 200 ? xhr.responseText : ''\n        }\n\n        onmessage = ({data: [sourceUrl, sourceCode]}) => {\n          const raw = sourceCode ? sourceCode : load(sourceUrl)\n          const transpiled = ts.transpile(raw)\n          postMessage(transpiled)\n        }\n      ",
+          ],
+          {type: 'text/javascript'},
+        ),
+      )
+
+    let worker = new Worker(workerFile);
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/contodo@latest/dist/contodo.iife.min.js"></script>
+  <style>
+    body{
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background-color: #222222;
+    }
+    .contodo {
+      position: inherit;
+      display: block;
+      font-family: monospace;
+      font-size: inherit;
+      min-width: 100px;
+      min-height: 100px;
+      white-space: break-spaces;
+      overflow: auto;
+      margin: auto;
+      background-color: #222222;
+      color: yellow;
+      padding: 1px;
+      scroll-behavior: smooth;
+    }
+    .contodo > .log {
+      border-color: rgba(157, 157, 157, 0.5);
+      border-width: 0 0 1pt 0;
+      border-style: solid;
+      padding: 2px 5px;
+    }
+    .contodo > .log:first-child {
+      border-width: 1pt 0;
+    }
+    .contodo > .warn {
+      background-color: #95952b;
+    }
+    .contodo > .warn > span.string {
+      color: #fafab4;
+    }
+    .contodo > .error {
+      background-color: #882020;
+    }
+    .contodo > .error > span.string {
+      color: #f0c8c8;
+    }
+    .contodo > .time {
+      opacity: 0.5;
+      font-size: 80%;
+    }
+    .contodo .null {
+      color: #c4c4c4;
+    }
+    .contodo .number, .contodo .bigint, .contodo .object, .contodo .boolean {
+      color: #1f2;
+    }
+    .contodo .array-string, .contodo .fn-args, .contodo .symbol, .contodo .trace-head {
+      color: #f0f;
+    }
+    .contodo .function, .contodo .object, .contodo .trace-file {
+      color: #18f;
+    }
+    .contodo table {
+      width: 100%;
+      text-align: left;
+      border-spacing: 0;
+      border-collapse: collapse;
+      border: 2px #333;
+      border-style: solid none;
+    }
+    .contodo thead, .contodo th {
+      font-weight: 700;
+    }
+    .contodo thead > tr, .contodo tr:nth-child(even) {
+      background-color: rgba(200, 200, 220, 0.1);
+    }
+    .contodo th, .contodo td {
+      padding: 3px 0;
+      border: 1px solid rgba(157, 157, 157, 0.2);
+      width: 1%;
+    }
+    .contodo-clear {
+      display: inline-block;
+      text-decoration: underline;
+      cursor: pointer;
+      font-size: 0.9em;
+      margin: 0 0 0 calc(100% - 2.8em);
+      color: #fff;
+      background-color: #222222;
+      border-radius: 0.2em;
+      z-index: 1;
+    }
+    .contodo-clear:hover {
+      color: yellow;
+    }
+    .contodo.clearBtn {
+      margin-bottom: -2em;
+    }
+  </style>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const contodo = new ConTodo(document.querySelector('.console'),{
+        applyCSS: false,
+      });
+    });
+  </script>
+
+
+  <title>Run</title>
+</head>
+<body>
+<div class="console"></div>
+<script>
+  function compile(data){
+    if(worker){
+      worker.postMessage(['', data]);
+      worker.onmessage = (e)=>{
+        const o = document.createElement('script');
+        o.innerHTML = `(function() {\n              ${e.data}\n            ; console.log('script run end');})()`;
+        document.body.appendChild(o);
+      }
+    }
+  }
+  window.addEventListener("message", (event) => {
+    if(event.data){
+      console.log('script running');
+      compile(event.data);
+    }
+
+  });
+</script>
+</body>
+</html>

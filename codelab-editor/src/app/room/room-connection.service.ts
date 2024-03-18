@@ -18,14 +18,17 @@ export class RoomConnectionService {
 
   network = new Map<string, DataConnection>();
   users = new Map<string, User>([[this.context.connectionId, {id: this.context.connectionId, name: this.context.name, color: getUserColor()}]]);
-
+  users$ = new BehaviorSubject<User[]>([]);
   constructor(
     private readonly context: RoomContextService,
     private readonly remote: RoomRemoteService,
     @Inject(OPERATIONS_IN) private readonly opStream: BehaviorSubject<Operation | null>
   ) {
     this.open();
-
+    const self = this.users.get(this.context.connectionId)
+    if(self){
+      this.clientUpdate(self);
+    }
   }
 
   open():void {
@@ -105,7 +108,7 @@ export class RoomConnectionService {
 
   addClient(connection: DataConnection):void {
     this.network.set(connection.peer, connection);
-    this.users.set(connection.peer, {id: connection.peer, color: getUserColor(), name: ''})
+    this.users.set(connection.peer, {id: connection.peer, color: getUserColor(), name: ''});
   }
   removeClient(connection: DataConnection): void {
     this.network.delete(connection.peer);
@@ -148,8 +151,10 @@ export class RoomConnectionService {
         cursor: this.remote.cursor?.addCursor(client.id, color, client.name),
         selection: this.remote.selection?.addSelection(client.id, color, client.name),
       };
-
+      this.users.set(client.id, usr);
     }
+    this.users$.next([...this.users.values()]);
+
   }
 
 
