@@ -1,10 +1,11 @@
 import {Component, Inject, OnInit} from '@angular/core';
-import {FormControl, ReactiveFormsModule, Validators} from "@angular/forms";
+import {FormControl, FormGroup, FormsModule, ReactiveFormsModule, Validators} from "@angular/forms";
 import {map, startWith} from "rxjs";
 import {TuiInputModule} from "@taiga-ui/kit";
-import {TuiButtonModule, TuiDialogContext, TuiDialogService} from "@taiga-ui/core";
+import {TuiButtonModule, TuiDialogContext, TuiDialogService, TuiGroupModule} from "@taiga-ui/core";
 import {AsyncPipe} from "@angular/common";
 import {POLYMORPHEUS_CONTEXT} from "@tinkoff/ng-polymorpheus";
+import {TuiAutoFocusModule} from "@taiga-ui/cdk";
 
 @Component({
   selector: 'app-name-request',
@@ -13,39 +14,55 @@ import {POLYMORPHEUS_CONTEXT} from "@tinkoff/ng-polymorpheus";
     TuiInputModule,
     ReactiveFormsModule,
     TuiButtonModule,
-    AsyncPipe
+    AsyncPipe,
+    FormsModule,
+    TuiGroupModule,
+    TuiAutoFocusModule
   ],
   template: `
-    <tui-input [formControl]="name">
-      Ваше имя
-      <input
+    <form [formGroup]="form" action="javascript: void(0);" (ngSubmit)="submit()">
+      <div
+        tuiGroup
+        class="group"
+        [collapsed]="true"
+      >
+          <tui-input [formControlName]="'name'">
+            Ваше имя
+            <input
+              tuiAutoFocus
+              tuiTextfield
+              type="text"
+            />
+          </tui-input>
 
-        tuiTextfield
-        type="text"
-      />
-    </tui-input>
-    <button
-      [disabled]="(invalid$ | async) || false"
-      appearance="primary"
-      tuiButton
-      type="button"
-      class="tui-space_right-3 tui-space_bottom-3"
-      (click)="submit()"
-    >
-      Войти
-    </button>
+          <button
+            [disabled]="(invalid$ | async) || false"
+            appearance="primary"
+            tuiIconButton
+            type="submit"
+            icon="tuiIconLogIn"
+            class="tui-group__auto-width-item"
+            (click)="submit()"
+          >
+            Войти
+          </button>
+      </div>
+    </form>
+
   `
 })
 
 export class AppNameRequestComponent {
-  name= new FormControl<string>('', [Validators.required])
+  form = new FormGroup({
+    name: new FormControl<string>('', [Validators.required])
+  });
 
-  invalid$ = this.name.statusChanges.pipe(startWith(this.name.status), map(()=> this.name.invalid))
+  invalid$ = this.form.statusChanges.pipe(startWith(this.form.status), map(()=> this.form.invalid))
 
   constructor(@Inject(TuiDialogService) private readonly dialogs: TuiDialogService,@Inject(POLYMORPHEUS_CONTEXT)
   private readonly context: TuiDialogContext<string, string>,) {
   }
   submit() {
-    this.context.completeWith(this.name.value || '$unknown');
+    this.context.completeWith(this.form.controls.name.value || '$unknown');
   }
 }

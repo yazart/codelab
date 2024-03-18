@@ -1,11 +1,8 @@
 import {ChangeDetectionStrategy, Component} from '@angular/core';
 import {TuiInputModule, TuiIslandModule} from "@taiga-ui/kit";
 import {TuiButtonModule} from "@taiga-ui/core";
-import { v4 } from "uuid";
 import {Router} from "@angular/router";
-import {FormControl, FormsModule, ReactiveFormsModule, Validators} from "@angular/forms";
-import {async, map, startWith} from "rxjs";
-import {main} from "@angular/compiler-cli/src/main";
+import {FormsModule, ReactiveFormsModule} from "@angular/forms";
 import {AsyncPipe} from "@angular/common";
 
 @Component({
