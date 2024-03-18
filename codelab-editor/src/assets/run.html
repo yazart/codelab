@@ -134,14 +134,14 @@
       worker.postMessage(['', data]);
       worker.onmessage = (e)=>{
         const o = document.createElement('script');
-        o.innerHTML = `(function() {\n              ${e.data}\n            ; console.log('script run end');})()`;
+        o.innerHTML = `(function() {\n             try{ (function(){${e.data}})(); } catch(e){console.error(e);}\n            ; console.log('>> --- end ---');})()`;
         document.body.appendChild(o);
       }
     }
   }
   window.addEventListener("message", (event) => {
     if(event.data){
-      console.log('script running');
+      console.log('>> start');
       compile(event.data);
     }
 

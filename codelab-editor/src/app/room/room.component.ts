@@ -1,23 +1,14 @@
-import {
-  AfterContentInit, AfterViewInit,
-  ChangeDetectionStrategy,
-  Component,
-  DestroyRef,
-  ElementRef,
-  Inject,
-  OnInit,
-  ViewChild
-} from '@angular/core';
+import {AfterViewInit, ChangeDetectionStrategy, Component, ElementRef, Inject, ViewChild} from '@angular/core';
 import {AsyncPipe, JsonPipe, NgForOf} from "@angular/common";
 import {FormsModule} from "@angular/forms";
 import {RoomConnectionService} from "./room-connection.service";
 import {TuiBadgeModule} from "@taiga-ui/kit";
 import {RoomRemoteService} from "./room-remote.service";
-import {Operation, OPERATIONS_IN, OPERATIONS_OUT} from "../common/operations";
+import {Operation, OPERATIONS_IN, OPERATIONS_OUT, OperationType} from "../common/operations";
 import {BehaviorSubject, filter, takeUntil} from "rxjs";
 import {TuiDestroyService} from "@taiga-ui/cdk";
-import {User} from "./user";
 import {TuiButtonModule, TuiGroupModule} from "@taiga-ui/core";
+import {RoomContextService} from "./room-context.service";
 
 @Component({
   selector: 'app-room',
@@ -55,6 +46,7 @@ export class AppRoomComponent implements AfterViewInit{
 
   editorOptions = {
     theme: 'vs-dark',
+    value: this.context.isHost ? this.context.baseValue : '',
     language: 'typescript',
     minimap: {
       enabled: false,
@@ -65,6 +57,7 @@ export class AppRoomComponent implements AfterViewInit{
   constructor(
     private readonly room: RoomConnectionService,
     private readonly roomRemote: RoomRemoteService,
+    private readonly context: RoomContextService,
     private readonly destroyRef$: TuiDestroyService,
     @Inject(OPERATIONS_IN) private readonly opInStream: BehaviorSubject<Operation| null>,
     @Inject(OPERATIONS_OUT) private readonly opOutStream: BehaviorSubject<Operation| null>
@@ -81,6 +74,21 @@ export class AppRoomComponent implements AfterViewInit{
       this.roomRemote.init(this.editorM);
     }
 
+    this.opInStream.pipe(
+      filter((op): op is Operation=> !!op),
+      filter(op=> op.type === OperationType.Run || op.type === OperationType.Clear),
+      takeUntil(this.destroyRef$)
+    ).subscribe((op)=>{
+
+      if(OperationType.Run == op.type && op.data.userId !== this.context.connectionId){
+        this.runCode(false);
+      }
+      if(OperationType.Clear === op.type && op.data.userId !== this.context.connectionId){
+        this.reload(false);
+      }
+    })
+
+
     this.opOutStream.pipe(
       filter((op): op is Operation=> !!op),
       takeUntil(this.destroyRef$)
@@ -90,14 +98,20 @@ export class AppRoomComponent implements AfterViewInit{
         this.room.sendAll(op)
     })
   }
-  runCode(){
-    const data = this.editorM?.getModel()?.getValue();
+  runCode(withEmit= true){
+    const data = this.editorM?.getValue();
     console.log(data);
     this.frame?.nativeElement.contentWindow.postMessage(data, window.location.origin);
+    if(withEmit){
+      this.opOutStream.next({type: OperationType.Run, data: {userId: this.context.connectionId}})
+    }
   }
-  reload() {
+  reload(withEmit= true) {
     if(this.frame?.nativeElement){
       this.frame.nativeElement.src = 'assets/run.html';
+    }
+    if(withEmit){
+      this.opOutStream.next({type: OperationType.Clear, data: {userId: this.context.connectionId}})
     }
   }
 }

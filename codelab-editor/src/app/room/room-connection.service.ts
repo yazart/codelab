@@ -47,7 +47,11 @@ export class RoomConnectionService {
     conn.on('open', () => {
       console.log(`==> connected to ${id}`);
       this.network.set(id, conn);
-      this.sendTo(id, {type: OperationType.Whoami, data: {name: this.context.name, color: getUserColor(), id: this.context.userId}})
+      this.sendTo(id, {type: OperationType.Whoami, data: {name: this.context.name, userId: this.context.connectionId, color: getUserColor(), id: this.context.connectionId}})
+      if(id === this.context.roomId){
+        this.sendTo(this.context.roomId, {type: OperationType.GetState, data: {userId: this.context.userId}})
+      }
+
       conn.on('data', (data)=>{
         this.receiveData(conn.peer, data);
       })
@@ -55,7 +59,7 @@ export class RoomConnectionService {
         this.removeClient(conn);
       });
       if(!this.context.isHost) {
-        this.sendTo(this.context.roomId, {type: OperationType.Whoami, data: {id: this.context.userId, name: this.context.name, color: getUserColor()}})
+        this.sendTo(this.context.roomId, {type: OperationType.Whoami, data: {userId: this.context.connectionId, id: this.context.userId, name: this.context.name, color: getUserColor()}})
       }
     });
 
@@ -89,12 +93,14 @@ export class RoomConnectionService {
   receiveData(from: string, data: unknown): void {
     console.log('from', from, 'data', JSON.stringify(data));
     if(this.isOperation(data)){
+
       if(data.type === OperationType.Whoami){
         this.clientUpdate(data.data);
       }
       if(data.type === OperationType.UserList) {
         data.data.forEach((user)=> this.clientUpdate(user));
       }
+
       this.opStream.next(data as Operation);
     }
 

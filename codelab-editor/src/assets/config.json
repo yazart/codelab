@@ -1,0 +1,8 @@
+{
+  "peerServer": {
+    "host": "localhost",
+    "port": 3300,
+    "path": "/async",
+    "secure": false
+  }
+}

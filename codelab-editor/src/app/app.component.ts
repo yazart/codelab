@@ -11,6 +11,4 @@ import {TuiDialogModule, TuiModeModule, TuiRootModule, TuiThemeNightModule} from
   styleUrl: './app.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class AppComponent {
-  title = 'codelab-editor';
-}
+export class AppComponent {}

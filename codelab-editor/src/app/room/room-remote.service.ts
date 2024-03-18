@@ -11,6 +11,7 @@ export class RoomRemoteService{
   cursor: RemoteCursorManager | undefined;
   selection: RemoteSelectionManager | undefined;
   editor: EditorContentManager | undefined;
+  originalEditor: monaco.editor.ICodeEditor | undefined;
 
   constructor(
     @Inject(OPERATIONS_OUT) private readonly opOutStream: BehaviorSubject<Operation| null>,
@@ -18,6 +19,7 @@ export class RoomRemoteService{
   private readonly context: RoomContextService) {
   }
   init(editor: monaco.editor.ICodeEditor): void {
+    this.originalEditor = editor;
     editor.onDidChangeCursorPosition((e)=>{
       this.opOutStream.next({type: OperationType.MoveCursor, data: {userId: this.context.connectionId, position:e.position}})
     })
@@ -75,6 +77,20 @@ export class RoomRemoteService{
       this.selection?.showSelection(operation.data.userId)
     }
 
+    if(operation.type === OperationType.GetState) {
+      this.opOutStream.next({
+        type: OperationType.State,
+        data: {
+          userId: this.context.connectionId,
+          value: this.originalEditor?.getValue() || '',
+        }
+      })
+    }
+
+    if(operation.type === OperationType.State) {
+      this.originalEditor?.setValue(operation.data.value ||this.originalEditor?.getValue() || '');
+    }
+
 
     if(this.context.isHost){
       this.opOutStream.next(operation);
@@ -84,6 +100,12 @@ export class RoomRemoteService{
   private onInsert(index: number, text: string){
     console.log('onInsert');
     const ds = this.opInStream.value
+    if(ds?.type === OperationType.State) {
+      if(ds.data.value === text){
+        return;
+      }
+    }
+
     if(ds?.type === OperationType.InsertText){
       if (ds.data.text === text && ds.data.index === index){
         return;
