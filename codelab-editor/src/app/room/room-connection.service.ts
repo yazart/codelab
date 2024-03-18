@@ -6,15 +6,12 @@ import {BehaviorSubject} from "rxjs";
 import {DataConnection, Peer} from "peerjs";
 import {User} from "./user";
 import {getUserColor} from "./color-palete";
+import {APP_SETTINGS, AppSettings} from "../common/app-settings";
 
 @Injectable()
 export class RoomConnectionService {
   // create peer
-  peer = new Peer(this.context.connectionId, {
-    host: 'localhost',
-    port: 3300,
-    path: "/async",
-  });
+  peer = new Peer(this.context.connectionId, this.appSettings.peerServer);
 
   network = new Map<string, DataConnection>();
   users = new Map<string, User>([[this.context.connectionId, {id: this.context.connectionId, name: this.context.name, color: getUserColor()}]]);
@@ -22,7 +19,8 @@ export class RoomConnectionService {
   constructor(
     private readonly context: RoomContextService,
     private readonly remote: RoomRemoteService,
-    @Inject(OPERATIONS_IN) private readonly opStream: BehaviorSubject<Operation | null>
+    @Inject(OPERATIONS_IN) private readonly opStream: BehaviorSubject<Operation | null>,
+    @Inject(APP_SETTINGS) private readonly appSettings: AppSettings
   ) {
     this.open();
     const self = this.users.get(this.context.connectionId)
