@@ -11,9 +11,9 @@ import {getUserColor} from "./color-palete";
 export class RoomConnectionService {
   // create peer
   peer = new Peer(this.context.connectionId, {
-    host: "localhost",
+    host: 'localhost',
     port: 3300,
-    path: "api/v1/peer",
+    path: "/async",
   });
 
   network = new Map<string, DataConnection>();
