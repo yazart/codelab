@@ -113,10 +113,12 @@ export class RoomConnectionService {
   addClient(connection: DataConnection):void {
     this.network.set(connection.peer, connection);
     this.users.set(connection.peer, {id: connection.peer, color: getUserColor(), name: ''});
+    this.users$.next([...this.users.values()]);
   }
   removeClient(connection: DataConnection): void {
     this.network.delete(connection.peer);
-    this.users.delete(connection.peer)
+    this.users.delete(connection.peer);
+    this.users$.next([...this.users.values()]);
   }
 
 

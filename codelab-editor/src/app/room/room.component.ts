@@ -1,8 +1,8 @@
 import {AfterViewInit, ChangeDetectionStrategy, Component, ElementRef, Inject, ViewChild} from '@angular/core';
-import {AsyncPipe, JsonPipe, NgForOf} from "@angular/common";
-import {FormsModule} from "@angular/forms";
+import {AsyncPipe, DOCUMENT, JsonPipe, NgForOf} from "@angular/common";
+import {FormControl, FormsModule, ReactiveFormsModule} from "@angular/forms";
 import {RoomConnectionService} from "./room-connection.service";
-import {TuiBadgeModule} from "@taiga-ui/kit";
+import {TuiBadgeModule, TuiInputCopyModule} from "@taiga-ui/kit";
 import {RoomRemoteService} from "./room-remote.service";
 import {Operation, OPERATIONS_IN, OPERATIONS_OUT, OperationType} from "../common/operations";
 import {BehaviorSubject, filter, takeUntil} from "rxjs";
@@ -22,7 +22,9 @@ import {RoomContextService} from "./room-context.service";
     TuiBadgeModule,
     JsonPipe,
     TuiButtonModule,
-    TuiGroupModule
+    TuiGroupModule,
+    TuiInputCopyModule,
+    ReactiveFormsModule
   ],
   providers: [
     RoomConnectionService,
@@ -42,6 +44,9 @@ import {RoomContextService} from "./room-context.service";
 export class AppRoomComponent implements AfterViewInit{
   @ViewChild('editor') public readonly editor: ElementRef | undefined;
   @ViewChild('frame') public readonly frame: ElementRef | undefined;
+  roomUrl = `${this.document.baseURI}room/${this.context.roomId}`.replace(/\/\//ig, '/').replace(/(http(s?)):\/(\S)/ig, '$1://$3');
+
+  roomId = new FormControl(this.roomUrl);
   editorM: monaco.editor.ICodeEditor | undefined;
 
   editorOptions = {
@@ -60,7 +65,8 @@ export class AppRoomComponent implements AfterViewInit{
     private readonly context: RoomContextService,
     private readonly destroyRef$: TuiDestroyService,
     @Inject(OPERATIONS_IN) private readonly opInStream: BehaviorSubject<Operation| null>,
-    @Inject(OPERATIONS_OUT) private readonly opOutStream: BehaviorSubject<Operation| null>
+    @Inject(OPERATIONS_OUT) private readonly opOutStream: BehaviorSubject<Operation| null>,
+    @Inject(DOCUMENT) private readonly document: Document,
   ) {
   }
 

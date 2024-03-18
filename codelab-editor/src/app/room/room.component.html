@@ -1,8 +1,10 @@
 <div class="container">
   <div class="editor" #editor>
-
   </div>
   <div class="run">
+    <tui-input-copy [formControl]="roomId" >Комната</tui-input-copy>
+
+
     <h5 class="tui-text_h5">Пользователи</h5>
     <ng-container *ngFor="let user of users$ | async">
       <tui-badge
