@@ -53,6 +53,9 @@ export class AppRoomComponent implements AfterViewInit{
     theme: 'vs-dark',
     value: this.context.isHost ? this.context.baseValue : '',
     language: 'typescript',
+    suggest:{
+      showFunctions: this.context.isHost,
+    },
     minimap: {
       enabled: false,
     }
