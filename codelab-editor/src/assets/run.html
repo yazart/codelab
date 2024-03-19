@@ -9,7 +9,21 @@
     const workerFile = window.URL.createObjectURL(
         new Blob(
           [
-            "\n        importScripts('https://unpkg.com/typescript@latest')\n\n        const load = sourceUrl => {\n          const xhr = XMLHttpRequest\n            ? new XMLHttpRequest()\n            : ActiveXObject\n            ? new ActiveXObject('Microsoft.XMLHTTP')\n            : null\n\n          if (!xhr) return ''\n\n          xhr.open('GET', sourceUrl, false)\n          xhr.overrideMimeType && xhr.overrideMimeType('text/plain')\n          xhr.send(null)\n          return xhr.status == 200 ? xhr.responseText : ''\n        }\n\n        onmessage = ({data: [sourceUrl, sourceCode]}) => {\n          const raw = sourceCode ? sourceCode : load(sourceUrl)\n          const transpiled = ts.transpile(raw)\n          postMessage(transpiled)\n        }\n      ",
+            `
+            importScripts('https://unpkg.com/typescript@latest')
+            const load = sourceUrl => {
+              const xhr = XMLHttpRequest ? new XMLHttpRequest() : ActiveXObject ? new ActiveXObject('Microsoft.XMLHTTP'): null;
+              if (!xhr) return '';
+              xhr.open('GET', sourceUrl, false);
+              xhr.overrideMimeType && xhr.overrideMimeType('text/plain');
+              xhr.send(null);
+              return xhr.status == 200 ? xhr.responseText : '';
+            }
+            onmessage = ({data: [sourceUrl, sourceCode]}) => {
+              const raw = sourceCode ? sourceCode : load(sourceUrl);
+              const transpiled = ts.transpile(raw);
+              postMessage(transpiled);
+            }`,
           ],
           {type: 'text/javascript'},
         ),
