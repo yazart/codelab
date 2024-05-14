@@ -30,6 +30,7 @@ export type OperationState = {
   data: {
     userId: string;
     value: string;
+    hash: string;
   }
 }
 

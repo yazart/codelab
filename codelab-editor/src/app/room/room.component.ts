@@ -1,4 +1,4 @@
-import {AfterViewInit, ChangeDetectionStrategy, Component, ElementRef, Inject, ViewChild} from '@angular/core';
+import {AfterViewInit, ChangeDetectionStrategy, Component, ElementRef, Inject, OnInit, ViewChild} from '@angular/core';
 import {AsyncPipe, DOCUMENT, JsonPipe, NgForOf} from "@angular/common";
 import {FormControl, FormsModule, ReactiveFormsModule} from "@angular/forms";
 import {RoomConnectionService} from "./room-connection.service";
@@ -9,6 +9,8 @@ import {BehaviorSubject, filter, takeUntil} from "rxjs";
 import {TuiDestroyService} from "@taiga-ui/cdk";
 import {TuiButtonModule, TuiGroupModule} from "@taiga-ui/core";
 import {RoomContextService} from "./room-context.service";
+import {editor} from "monaco-editor";
+import EditorAutoClosingEditStrategy = editor.EditorAutoClosingEditStrategy;
 
 @Component({
   selector: 'app-room',
@@ -27,6 +29,7 @@ import {RoomContextService} from "./room-context.service";
     ReactiveFormsModule
   ],
   providers: [
+    RoomContextService,
     RoomConnectionService,
     RoomRemoteService,
     {
@@ -41,12 +44,12 @@ import {RoomContextService} from "./room-context.service";
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class AppRoomComponent implements AfterViewInit{
+export class RoomComponent implements AfterViewInit, OnInit{
   @ViewChild('editor') public readonly editor: ElementRef | undefined;
   @ViewChild('frame') public readonly frame: ElementRef | undefined;
-  roomUrl = `${this.document.baseURI}room/${this.context.roomId}`.replace(/\/\//ig, '/').replace(/(http(s?)):\/(\S)/ig, '$1://$3');
+  get roomUrl(): string { return `${this.document.baseURI}room/${this.context.roomId}`.replace(/\/\//ig, '/').replace(/(http(s?)):\/(\S)/ig, '$1://$3');}
 
-  roomId = new FormControl(this.roomUrl);
+  roomId = new FormControl('');
   editorM: monaco.editor.ICodeEditor | undefined;
 
   editorOptions = {
@@ -56,6 +59,10 @@ export class AppRoomComponent implements AfterViewInit{
     suggest:{
       showFunctions: this.context.isHost,
     },
+    trimAutoWhitespace: false,
+    autoClosingDelete: 'never' as EditorAutoClosingEditStrategy,
+    foldingStrategy: 'indentation' as ('auto' | 'indentation'),
+    contextmenu: false,
     minimap: {
       enabled: false,
     }
@@ -65,15 +72,20 @@ export class AppRoomComponent implements AfterViewInit{
   constructor(
     private readonly room: RoomConnectionService,
     private readonly roomRemote: RoomRemoteService,
-    private readonly context: RoomContextService,
+    public readonly context: RoomContextService,
     private readonly destroyRef$: TuiDestroyService,
     @Inject(OPERATIONS_IN) private readonly opInStream: BehaviorSubject<Operation| null>,
     @Inject(OPERATIONS_OUT) private readonly opOutStream: BehaviorSubject<Operation| null>,
     @Inject(DOCUMENT) private readonly document: Document,
   ) {
   }
+  ngOnInit(): void {
+    this.room.open();
+    this.roomId.patchValue(this.roomUrl)
+  }
 
   ngAfterViewInit(): void {
+
     this.editorM = monaco.editor.create(this.editor?.nativeElement, this.editorOptions);
     this.initEditor();
     }
@@ -89,10 +101,10 @@ export class AppRoomComponent implements AfterViewInit{
       takeUntil(this.destroyRef$)
     ).subscribe((op)=>{
 
-      if(OperationType.Run == op.type && op.data.userId !== this.context.connectionId){
+      if(OperationType.Run == op.type && op.data.userId !== this.context.userId){
         this.runCode(false);
       }
-      if(OperationType.Clear === op.type && op.data.userId !== this.context.connectionId){
+      if(OperationType.Clear === op.type && op.data.userId !== this.context.userId){
         this.reload(false);
       }
     })
@@ -112,7 +124,7 @@ export class AppRoomComponent implements AfterViewInit{
     console.log(data);
     this.frame?.nativeElement.contentWindow.postMessage(data, window.location.origin);
     if(withEmit){
-      this.opOutStream.next({type: OperationType.Run, data: {userId: this.context.connectionId}})
+      this.opOutStream.next({type: OperationType.Run, data: {userId: this.context.userId}})
     }
   }
   reload(withEmit= true) {
@@ -120,7 +132,7 @@ export class AppRoomComponent implements AfterViewInit{
       this.frame.nativeElement.src = 'assets/run.html';
     }
     if(withEmit){
-      this.opOutStream.next({type: OperationType.Clear, data: {userId: this.context.connectionId}})
+      this.opOutStream.next({type: OperationType.Clear, data: {userId: this.context.userId}})
     }
   }
 }

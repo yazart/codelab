@@ -13,7 +13,8 @@ fetch('assets/config.json')
         "port": 3300,
         "path": "/async",
         "secure": false,
-      }
+      },
+      "apiBase": "/api/v1"
     }
   })
   .then(

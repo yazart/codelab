@@ -1,19 +1,25 @@
 import {Injectable} from '@angular/core';
-import {v4} from "uuid";
+import {getUserColor} from "./color-palete";
+import {BehaviorSubject} from "rxjs";
+import {ActivatedRoute} from "@angular/router";
 
 @Injectable()
 export class RoomContextService {
-  roomId: string = v4();
-  isHost: boolean = false;
-  userId: string = v4();
-  name: string = '';
-
-  baseValue = `
-  // simple code for check work
-  function a() {console.log('hello codelab!');}
-  a();
-  `
-  get connectionId(): string {
-    return this.isHost ? this.roomId : this.userId
+  ready = new BehaviorSubject(false);
+  get roomId(): string {
+    return this.activatedRouter.snapshot.data['context'].roomId;
+  }
+  get isHost(): boolean {
+    return this.activatedRouter.snapshot.data['context'].isHost;
+  }
+  get userId(): string {
+    return this.activatedRouter.snapshot.data['context'].userId;
+  }
+  get name(): string {
+   return this.activatedRouter.snapshot.data['name'];
+  }
+  color = getUserColor();
+  baseValue = ``;
+  constructor(private activatedRouter: ActivatedRoute) {
   }
 }

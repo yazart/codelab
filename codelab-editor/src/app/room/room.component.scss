@@ -10,6 +10,8 @@
     display: flex;
     & .editor {
       width: 60%;
+      resize: vertical;
+      overflow: auto;
     }
   }
   & .run{

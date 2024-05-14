@@ -10,7 +10,7 @@
         new Blob(
           [
             `
-            importScripts('https://unpkg.com/typescript@latest')
+            importScripts('${window.location.origin}/assets/js/typescript.js')
             const load = sourceUrl => {
               const xhr = XMLHttpRequest ? new XMLHttpRequest() : ActiveXObject ? new ActiveXObject('Microsoft.XMLHTTP'): null;
               if (!xhr) return '';
@@ -31,7 +31,7 @@
 
     let worker = new Worker(workerFile);
   </script>
-  <script src="https://cdn.jsdelivr.net/npm/contodo@latest/dist/contodo.iife.min.js"></script>
+  <script src="/assets/js/contodo.iife.min.js"></script>
   <style>
     body{
       margin: 0;
@@ -148,7 +148,17 @@
       worker.postMessage(['', data]);
       worker.onmessage = (e)=>{
         const o = document.createElement('script');
-        o.innerHTML = `(function() {\n             try{ (function(){${e.data}})(); } catch(e){console.error(e);}\n            ; console.log('>> --- end ---');})()`;
+        o.innerHTML = `(function() {
+
+        try{
+
+         (function(){${e.data}})();
+
+         } catch(e){
+
+         console.error(e);
+
+         }\n            ; setTimeout(()=>console.log('>> --- end ---'));})()`;
         document.body.appendChild(o);
       }
     }

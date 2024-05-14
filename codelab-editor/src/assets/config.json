@@ -3,6 +3,8 @@
     "host": "localhost",
     "port": 3300,
     "path": "/async",
+    "key": "codelab",
     "secure": false
-  }
+  },
+  "apiBase": "http://localhost:3300/api/v1"
 }

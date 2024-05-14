@@ -1,9 +1,10 @@
-import {ChangeDetectionStrategy, Component} from '@angular/core';
+import {ChangeDetectionStrategy, Component, Inject} from '@angular/core';
 import {TuiInputModule, TuiIslandModule} from "@taiga-ui/kit";
 import {TuiButtonModule} from "@taiga-ui/core";
 import {Router} from "@angular/router";
 import {FormsModule, ReactiveFormsModule} from "@angular/forms";
-import {AsyncPipe} from "@angular/common";
+import {AsyncPipe, DOCUMENT} from "@angular/common";
+import {UUID_GEN} from "../uuid-gen.token";
 
 @Component({
   selector: 'app-start',
@@ -22,10 +23,11 @@ import {AsyncPipe} from "@angular/common";
 })
 export class AppStartComponent {
 
-  constructor(private readonly router: Router) {
+  constructor(
+    private readonly router: Router, @Inject(UUID_GEN)private readonly uuidGen: ()=>string) {
   }
   createRoom(): Promise<unknown> {
-    const navigation = this.router.createUrlTree(['room', 'create']);
+    const navigation = this.router.createUrlTree(['room', this.uuidGen()]);
     return this.router.navigateByUrl(navigation);
   }
 }

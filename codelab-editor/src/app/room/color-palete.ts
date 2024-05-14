@@ -26,7 +26,7 @@ export const UserColors: TUserColors = {
 
 
 export function getUserColor(): TUserColors[keyof TUserColors] {
-  const id: keyof TUserColors = Math.round(Math.random()*10) as keyof TUserColors;
+  const id: keyof TUserColors = Math.round(Math.random()*9) as keyof TUserColors;
 
   return UserColors[id];
 }

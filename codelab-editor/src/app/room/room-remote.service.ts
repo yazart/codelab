@@ -5,6 +5,7 @@ import {RoomContextService} from "./room-context.service";
 import {RemoteCursorManager} from "../remote-lib/RemoteCursorManager";
 import {RemoteSelectionManager} from "../remote-lib/RemoteSelectionManager";
 import {EditorContentManager} from "../remote-lib/EditorContentManager";
+import {HASH_GEN, HashGen} from "../hash-gen.token";
 
 @Injectable()
 export class RoomRemoteService{
@@ -16,15 +17,31 @@ export class RoomRemoteService{
   constructor(
     @Inject(OPERATIONS_OUT) private readonly opOutStream: BehaviorSubject<Operation| null>,
     @Inject(OPERATIONS_IN) private readonly opInStream: BehaviorSubject<Operation| null>,
-  private readonly context: RoomContextService) {
+    @Inject(HASH_GEN) private readonly hashGen: HashGen,
+    private readonly context: RoomContextService
+  ) {
   }
   init(editor: monaco.editor.ICodeEditor): void {
     this.originalEditor = editor;
     editor.onDidChangeCursorPosition((e)=>{
-      this.opOutStream.next({type: OperationType.MoveCursor, data: {userId: this.context.connectionId, position:e.position}})
+      const lastEvent = this.opInStream.value;
+      if(lastEvent?.type === OperationType.InsertText || lastEvent?.type === OperationType.State){
+        return;
+      }
+      this.opOutStream.next({type: OperationType.MoveCursor, data: {userId: this.context.userId, position:e.position}})
     })
     editor.onDidChangeCursorSelection((e)=>{
-      this.opOutStream.next({type: OperationType.SelectText, data: {userId: this.context.connectionId, start: e.selection.getStartPosition(), end: e.selection.getEndPosition()}})
+      const start = e.selection.getStartPosition();
+      const end = e.selection.getEndPosition();
+      const lastEvent = this.opInStream.value;
+      if(lastEvent?.type === OperationType.InsertText || lastEvent?.type === OperationType.State){
+        return;
+      }
+      if(start.lineNumber === end.lineNumber && start.column === end.column){
+        return;
+      }
+
+      this.opOutStream.next({type: OperationType.SelectText, data: {userId: this.context.userId, start: start, end: end}})
     })
 
     this.cursor = new RemoteCursorManager({
@@ -45,18 +62,18 @@ export class RoomRemoteService{
     });
     this.opInStream
       .pipe(
-        tap((r)=> console.log(r)),
+        tap((r)=> console.log( 'in stream', r)),
         filter((x): x is Operation=>!!x),
         filter((x)=> {
           const {userId} = Object.assign({userId: undefined}, x.data);
-          return userId === undefined || userId !== this.context.connectionId;
+          return userId === undefined || userId !== this.context.userId;
         })
       )
       .subscribe((operation)=>{
         this.executeOperation(operation);
       })
   }
-  private executeOperation(operation: Operation): void{
+  private async executeOperation(operation: Operation): Promise<void>{
     if(operation.type === OperationType.InsertText) {
       this.editor?.insert(operation.data.index, operation.data.text || '');
     }
@@ -78,22 +95,27 @@ export class RoomRemoteService{
     }
 
     if(operation.type === OperationType.GetState) {
+      const text = this.originalEditor?.getValue() || '';
+      const hash = await this.hashGen(text);
       this.opOutStream.next({
         type: OperationType.State,
         data: {
-          userId: this.context.connectionId,
-          value: this.originalEditor?.getValue() || '',
+          userId: this.context.userId,
+          value: text,
+          hash,
         }
       })
     }
 
     if(operation.type === OperationType.State) {
+      const original = this.originalEditor?.getValue() || '';
+      const originalHash = await this.hashGen(original);
+
+      if(operation.data.hash === originalHash){
+        return ;
+      }
+
       this.originalEditor?.setValue(operation.data.value ||this.originalEditor?.getValue() || '');
-    }
-
-
-    if(this.context.isHost){
-      this.opOutStream.next(operation);
     }
   }
 
@@ -111,7 +133,7 @@ export class RoomRemoteService{
         return;
       }
     }
-    this.opOutStream.next({type: OperationType.InsertText, data: { userId: this.context.connectionId, index: index, text: text}});
+    this.opOutStream.next({type: OperationType.InsertText, data: { userId: this.context.userId, index: index, text: text}});
   }
   private onDelete(index: number, length: number){
     const ds = this.opInStream.value
@@ -120,7 +142,7 @@ export class RoomRemoteService{
         return;
       }
     }
-    this.opOutStream.next({type: OperationType.DeleteText, data: { userId: this.context.connectionId, index: index, length: length}})
+    this.opOutStream.next({type: OperationType.DeleteText, data: { userId: this.context.userId, index: index, length: length}})
   }
   private onReplace(index: number,length: number, text: string){
     const ds = this.opInStream.value
@@ -129,6 +151,6 @@ export class RoomRemoteService{
         return;
       }
     }
-    this.opOutStream.next({type: OperationType.ReplaceText, data: { userId: this.context.connectionId, index: index, text: text, length: length}});
+    this.opOutStream.next({type: OperationType.ReplaceText, data: { userId: this.context.userId, index: index, text: text, length: length}});
   }
 }
