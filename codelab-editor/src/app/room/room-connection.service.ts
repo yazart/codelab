@@ -1,169 +1,196 @@
-import {Inject, Injectable} from '@angular/core';
-import {RoomContextService} from "./room-context.service";
-import {RoomRemoteService} from "./room-remote.service";
-import {Operation, OPERATIONS_IN, OperationType} from "../common/operations";
-import {BehaviorSubject, filter, takeUntil} from "rxjs";
-import {DataConnection, Peer} from "peerjs";
-import {User} from "./user";
-import {APP_SETTINGS, AppSettings} from "../common/app-settings";
-import {RoomApiService} from "./room-api.service";
+import {Inject, Injectable, OnDestroy} from '@angular/core';
+import {RoomContextService} from './room-context.service';
+import {RoomRemoteService} from './room-remote.service';
+import {Operation, OPERATIONS_IN, OperationType} from '../common/operations';
+import {BehaviorSubject} from 'rxjs';
+import {User} from './user';
+import {APP_SETTINGS, AppSettings} from '../common/app-settings';
+
+type ServerMessage =
+  | {event: 'operation'; from: string; data: Operation}
+  | {event: 'users'; data: string[]};
 
 @Injectable()
-export class RoomConnectionService {
-  // create peer
-  peer: Peer | undefined;
-  network = new Map<string, DataConnection>();
-
-  users = new Map<string, User>([[this.context.userId, {id: this.context.userId, name: this.context.name, color: this.context.color}]]);
+export class RoomConnectionService implements OnDestroy {
+  users = new Map<string, User>([[
+    this.context.userId,
+    {id: this.context.userId, name: this.context.name, color: this.context.color},
+  ]]);
   users$ = new BehaviorSubject<User[]>([...this.users.values()]);
 
-  private onlineUsers: EventSource | undefined;
+  private socket?: WebSocket;
+  private reconnectTimer?: ReturnType<typeof setTimeout>;
+  private reconnectAttempt = 0;
+  private closed = false;
+
   constructor(
     private readonly context: RoomContextService,
     private readonly remote: RoomRemoteService,
     @Inject(OPERATIONS_IN) private readonly opStream: BehaviorSubject<Operation | null>,
     @Inject(APP_SETTINGS) private readonly appSettings: AppSettings,
-    private readonly roomApiService: RoomApiService,
   ) {}
 
-  open():void {
-    this.peer = new Peer(this.context.userId, this.appSettings.peerServer);
-    this.peer?.on('open', (id: string)=>{
-      console.log('[PEER ID]:', id);
-      this.addConnectionListener();
-      Promise.resolve().then(()=>{
-        this.roomApiService.users(this.context.roomId).subscribe((userList)=>{
-          userList
-            .filter((id)=> this.context.userId !== id)
-            .forEach((id)=> this.connectTo(id));
-          this.watchOnline();
-        });
-      })
-    })
-
-
+  open(): void {
+    this.closed = false;
+    this.connect();
   }
 
-  watchOnline():void {
-    this.onlineUsers = new EventSource(`${this.appSettings.apiBase}/rooms/${this.context.roomId}/events`);
-    this.onlineUsers.onmessage = ((event:MessageEvent<string>)=>{
-      const users = JSON.parse(event.data);
-      if(Array.isArray(users)){
-        const onlineUsers = new Set(users);
-        [...this.users.keys()].forEach((user)=>{
-          if(!onlineUsers.has(user) && user !== this.context.userId){
-            this.removeClient(user);
-          }
-        })
-      }
-    })
+  ngOnDestroy(): void {
+    this.closed = true;
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+    }
+    this.socket?.close(1000, 'Component destroyed');
   }
 
-  connectTo(id: string): void {
-    if(this.network.has(id)){return;}
-    const conn = this.peer?.connect(id);
-    conn?.on('open', () => {
-      console.log(`==> connected to ${id}`);
-      this.network.set(id, conn);
-      this.sendTo(id, {type: OperationType.Whoami, data: {name: this.context.name, userId: this.context.userId, color: this.context.color, id: this.context.userId}})
-      this.sendTo(id, {type: OperationType.GetState, data: {userId: this.context.userId}})
-      conn.on('data', (data)=>{
-        this.receiveData(conn.peer, data);
-      })
-      conn.on('error', ()=>{console.log('error')})
-    });
-
+  sendAll(operation: Operation): void {
+    if (this.socket?.readyState === WebSocket.OPEN) {
+      this.socket.send(JSON.stringify(operation));
+    }
   }
 
-  addConnectionListener() {
-    this.peer?.on('connection', (conn) => {
-      console.log(`[ NEW CONNECTION FROM ]: ${conn.peer}`);
-      this.addClient(conn);
-      this.connectTo(conn.peer);
-      conn.on('open', () => {
-        conn.on('data', (data)=>{
-          this.receiveData(conn.peer, data);
-        })
-        conn.send({type: OperationType.Whoami, data:{id: this.context.userId, name: this.context.name, color: this.context.color}});
+  private connect(): void {
+    const url = this.createWebSocketUrl();
+    this.socket = new WebSocket(url);
+
+    this.socket.onopen = () => {
+      this.reconnectAttempt = 0;
+      this.sendIdentity();
+      this.sendAll({
+        type: OperationType.GetState,
+        data: {userId: this.context.userId},
       });
-    });
+    };
+
+    this.socket.onmessage = (event: MessageEvent<string>) => {
+      this.receiveMessage(event.data);
+    };
+
+    this.socket.onclose = () => {
+      if (!this.closed) {
+        this.scheduleReconnect();
+      }
+    };
+
+    this.socket.onerror = () => {
+      this.socket?.close();
+    };
   }
 
-  receiveData(from: string, data: unknown): void {
-    console.log('from', from, 'data', JSON.stringify(data));
-    if(this.isOperation(data)){
+  private createWebSocketUrl(): string {
+    const url = new URL(this.appSettings.webSocketUrl || '/sync', window.location.href);
+    if (url.protocol === 'http:' || url.protocol === 'https:') {
+      url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+    }
+    url.searchParams.set('roomId', this.context.roomId);
+    url.searchParams.set('userId', this.context.userId);
+    return url.toString();
+  }
 
-      if(data.type === OperationType.Whoami){
-        this.clientUpdate(data.data);
-      }
-      if(data.type === OperationType.UserList) {
-        data.data.forEach((user)=> {
-          if(user.id !== this.context.userId){
-            this.connectTo(user.id);
-          }
-          this.clientUpdate(user);
-        });
-      }
+  private scheduleReconnect(): void {
+    const delay = Math.min(1000 * 2 ** this.reconnectAttempt, 10_000);
+    this.reconnectAttempt += 1;
+    this.reconnectTimer = setTimeout(() => this.connect(), delay);
+  }
 
-      this.opStream.next(data as Operation);
-    }else {
-      console.error(data);
+  private receiveMessage(raw: string): void {
+    let message: unknown;
+    try {
+      message = JSON.parse(raw);
+    } catch {
+      console.error('Invalid WebSocket message', raw);
+      return;
     }
 
+    if (!this.isServerMessage(message)) {
+      console.error('Unknown WebSocket message', message);
+      return;
+    }
+
+    if (message.event === 'users') {
+      this.updateOnlineUsers(message.data);
+      return;
+    }
+
+    const operation = message.data;
+    if (operation.type === OperationType.Whoami) {
+      const isNewClient = !this.users.has(operation.data.id);
+      this.clientUpdate(operation.data);
+      if (isNewClient) {
+        this.sendIdentity();
+      }
+    }
+    if (operation.type === OperationType.UserList) {
+      operation.data.forEach((user) => this.clientUpdate(user));
+    }
+    this.opStream.next(operation);
   }
 
-  isOperation(data: unknown): data is Operation {
-    const dataOperation = data as Operation;
-
-    return (!!data && dataOperation.type && Object.values(OperationType).indexOf(dataOperation.type)!==-1);
+  private isServerMessage(value: unknown): value is ServerMessage {
+    if (!value || typeof value !== 'object') {
+      return false;
+    }
+    const message = value as {event?: unknown; data?: unknown; from?: unknown};
+    if (message.event === 'users') {
+      return Array.isArray(message.data) && message.data.every((id) => typeof id === 'string');
+    }
+    return message.event === 'operation'
+      && typeof message.from === 'string'
+      && this.isOperation(message.data);
   }
 
-  addClient(connection: DataConnection):void {
-    this.network.set(connection.peer, connection);
-    this.users$.next([...this.users.values()]);
+  private isOperation(data: unknown): data is Operation {
+    const operation = data as Operation;
+    return !!data
+      && typeof data === 'object'
+      && Object.values(OperationType).includes(operation.type);
   }
-  removeClient(id: string): void {
-    this.network.delete(id);
-    const deletionUser = this.users.get(id);
-    deletionUser?.cursor?.dispose();
-    deletionUser?.selection?.dispose();
+
+  private updateOnlineUsers(onlineUserIds: string[]): void {
+    const onlineUsers = new Set(onlineUserIds);
+    for (const userId of this.users.keys()) {
+      if (userId !== this.context.userId && !onlineUsers.has(userId)) {
+        this.removeClient(userId);
+      }
+    }
+  }
+
+  private removeClient(id: string): void {
+    const user = this.users.get(id);
+    user?.cursor?.dispose();
+    user?.selection?.dispose();
     this.users.delete(id);
     this.users$.next([...this.users.values()]);
   }
 
-
-  sendTo(id: string, data: Operation){
-    if(this.network.has(id)){
-      this.network.get(id)?.send(data);
-    }
+  private sendIdentity(): void {
+    this.sendAll({
+      type: OperationType.Whoami,
+      data: {
+        id: this.context.userId,
+        userId: this.context.userId,
+        name: this.context.name,
+        color: this.context.color,
+      },
+    });
   }
 
-  sendAll(operation: Operation) {
-    for(let peer of this.network.values()){
-      peer.send(operation);
-    }
-  }
-
-  clientUpdate(client: Pick<User, 'id'| 'name' | 'color'>){
-    if(this.users.has(client.id)){
-      const usr = this.users.get(client.id);
-      if(usr){
-        usr.name =  usr.name || client.name
-        if(!usr.cursor){
-          usr.cursor = this.remote.cursor?.addCursor(client.id, usr.color, client.name);
-        }
-        if(!usr.selection){
-          usr.selection = this.remote.selection?.addSelection(client.id, usr.color, client.name);
-        }
+  private clientUpdate(client: Pick<User, 'id' | 'name' | 'color'>): void {
+    const existing = this.users.get(client.id);
+    if (existing) {
+      existing.name = existing.name || client.name;
+      if (!existing.cursor) {
+        existing.cursor = this.remote.cursor?.addCursor(client.id, existing.color, client.name);
       }
-    }else {
-      const color = client.color;
-      const usr = {
+      if (!existing.selection) {
+        existing.selection = this.remote.selection?.addSelection(client.id, existing.color, client.name);
+      }
+    } else {
+      this.users.set(client.id, {
         ...client,
-        cursor: this.remote.cursor?.addCursor(client.id, color, client.name),
-        selection: this.remote.selection?.addSelection(client.id, color, client.name),
-      };
-      this.users.set(client.id, usr);
+        cursor: this.remote.cursor?.addCursor(client.id, client.color, client.name),
+        selection: this.remote.selection?.addSelection(client.id, client.color, client.name),
+      });
     }
     this.users$.next([...this.users.values()]);
   }

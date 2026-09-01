@@ -8,12 +8,7 @@ fetch('assets/config.json')
   .then((response)=> response.json())
   .catch(()=>{
     return {
-      "peerServer": {
-        "host": "localhost",
-        "port": 3300,
-        "path": "/async",
-        "secure": false,
-      },
+      "webSocketUrl": "ws://localhost:3300/sync",
       "apiBase": "/api/v1"
     }
   })
@@ -28,4 +23,3 @@ fetch('assets/config.json')
     }
   )
   .catch((e)=> console.error(e))
-

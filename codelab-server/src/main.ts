@@ -1,19 +1,14 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import {ExpressPeerServer} from "peer";
 import {DocumentBuilder, SwaggerModule} from "@nestjs/swagger";
 import {INestApplication} from "@nestjs/common";
+import {RoomSyncServer} from './rooms/room-sync.server';
 export let applicationRef: INestApplication;
 async function bootstrap() {
     applicationRef = await NestFactory.create(AppModule);
-    applicationRef.setGlobalPrefix('api', {exclude: ['/async', 'health']});
+    applicationRef.setGlobalPrefix('api', {exclude: ['health']});
     applicationRef.enableCors({origin : '*'});
-  const peerServer = ExpressPeerServer(applicationRef.getHttpServer(), {
-        path: "/async",
-        allow_discovery: true,
-        key: 'codelab'
-      });
-    applicationRef.use(peerServer);
+    applicationRef.get(RoomSyncServer).attach(applicationRef.getHttpServer());
   const config = new DocumentBuilder()
       .setTitle('Codelab API')
       .setDescription('Codelab API description')
