@@ -6,13 +6,7 @@
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
-  <meta http-equiv="Content-Security-Policy" content="default-src http://localhost:3300/ ws://localhost:3300/ 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';img-src 'self' data:">
-  <script>
-    var require = { paths: { vs: 'assets/monaco/min/vs' } };
-  </script>
-  <script src="assets/monaco/min/vs/loader.js"></script>
-  <script src="assets/monaco/min/vs/editor/editor.main.nls.js"></script>
-  <script src="assets/monaco/min/vs/editor/editor.main.js"></script>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' http://localhost:3300 ws://localhost:3300 ws: wss:; script-src 'self' 'unsafe-inline' blob:; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:">
 </head>
 <body>
   <app-root></app-root>

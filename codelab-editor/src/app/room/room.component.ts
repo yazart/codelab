@@ -11,6 +11,7 @@ import {TuiButtonModule, TuiGroupModule} from "@taiga-ui/core";
 import {RoomContextService} from "./room-context.service";
 import {editor} from "monaco-editor";
 import EditorAutoClosingEditStrategy = editor.EditorAutoClosingEditStrategy;
+import {MonacoLoaderService} from '../monaco-loader.service';
 
 @Component({
   selector: 'app-room',
@@ -72,6 +73,7 @@ export class RoomComponent implements AfterViewInit, OnInit{
   constructor(
     private readonly room: RoomConnectionService,
     private readonly roomRemote: RoomRemoteService,
+    private readonly monacoLoader: MonacoLoaderService,
     public readonly context: RoomContextService,
     private readonly destroyRef$: TuiDestroyService,
     @Inject(OPERATIONS_IN) private readonly opInStream: BehaviorSubject<Operation| null>,
@@ -84,11 +86,11 @@ export class RoomComponent implements AfterViewInit, OnInit{
     this.roomId.patchValue(this.roomUrl)
   }
 
-  ngAfterViewInit(): void {
-
+  async ngAfterViewInit(): Promise<void> {
+    await this.monacoLoader.load();
     this.editorM = monaco.editor.create(this.editor?.nativeElement, this.editorOptions);
     this.initEditor();
-    }
+  }
 
   initEditor(){
     if(this.editorM){
