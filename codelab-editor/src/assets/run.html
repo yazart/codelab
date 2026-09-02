@@ -2,174 +2,78 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport"
-        content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
-  <meta http-equiv="X-UA-Compatible" content="ie=edge">
-  <script>
-    const workerFile = window.URL.createObjectURL(
-        new Blob(
-          [
-            `
-            importScripts('${window.location.origin}/assets/js/typescript.js')
-            const load = sourceUrl => {
-              const xhr = XMLHttpRequest ? new XMLHttpRequest() : ActiveXObject ? new ActiveXObject('Microsoft.XMLHTTP'): null;
-              if (!xhr) return '';
-              xhr.open('GET', sourceUrl, false);
-              xhr.overrideMimeType && xhr.overrideMimeType('text/plain');
-              xhr.send(null);
-              return xhr.status == 200 ? xhr.responseText : '';
-            }
-            onmessage = ({data: [sourceUrl, sourceCode]}) => {
-              const raw = sourceCode ? sourceCode : load(sourceUrl);
-              const transpiled = ts.transpile(raw);
-              postMessage(transpiled);
-            }`,
-          ],
-          {type: 'text/javascript'},
-        ),
-      )
-
-    let worker = new Worker(workerFile);
-  </script>
-  <script src="/assets/js/contodo.iife.min.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Console</title>
   <style>
-    body{
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-      background-color: #222222;
-    }
-    .contodo {
-      position: inherit;
-      display: block;
-      font-family: monospace;
-      font-size: inherit;
-      min-width: 100px;
-      min-height: 100px;
-      white-space: break-spaces;
-      overflow: auto;
-      margin: auto;
-      background-color: #222222;
-      color: yellow;
-      padding: 1px;
-      scroll-behavior: smooth;
-    }
-    .contodo > .log {
-      border-color: rgba(157, 157, 157, 0.5);
-      border-width: 0 0 1pt 0;
-      border-style: solid;
-      padding: 2px 5px;
-    }
-    .contodo > .log:first-child {
-      border-width: 1pt 0;
-    }
-    .contodo > .warn {
-      background-color: #95952b;
-    }
-    .contodo > .warn > span.string {
-      color: #fafab4;
-    }
-    .contodo > .error {
-      background-color: #882020;
-    }
-    .contodo > .error > span.string {
-      color: #f0c8c8;
-    }
-    .contodo > .time {
-      opacity: 0.5;
-      font-size: 80%;
-    }
-    .contodo .null {
-      color: #c4c4c4;
-    }
-    .contodo .number, .contodo .bigint, .contodo .object, .contodo .boolean {
-      color: #1f2;
-    }
-    .contodo .array-string, .contodo .fn-args, .contodo .symbol, .contodo .trace-head {
-      color: #f0f;
-    }
-    .contodo .function, .contodo .object, .contodo .trace-file {
-      color: #18f;
-    }
-    .contodo table {
-      width: 100%;
-      text-align: left;
-      border-spacing: 0;
-      border-collapse: collapse;
-      border: 2px #333;
-      border-style: solid none;
-    }
-    .contodo thead, .contodo th {
-      font-weight: 700;
-    }
-    .contodo thead > tr, .contodo tr:nth-child(even) {
-      background-color: rgba(200, 200, 220, 0.1);
-    }
-    .contodo th, .contodo td {
-      padding: 3px 0;
-      border: 1px solid rgba(157, 157, 157, 0.2);
-      width: 1%;
-    }
-    .contodo-clear {
-      display: inline-block;
-      text-decoration: underline;
-      cursor: pointer;
-      font-size: 0.9em;
-      margin: 0 0 0 calc(100% - 2.8em);
-      color: #fff;
-      background-color: #222222;
-      border-radius: 0.2em;
-      z-index: 1;
-    }
-    .contodo-clear:hover {
-      color: yellow;
-    }
-    .contodo.clearBtn {
-      margin-bottom: -2em;
-    }
+    :root { color-scheme: dark; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+    * { box-sizing: border-box; }
+    body { min-width: 0; min-height: 100vh; margin: 0; background: #07101e; color: #eaf5ff; font-size: 12px; }
+    .console-toolbar { position: sticky; z-index: 2; top: 0; display: flex; min-height: 30px; align-items: center; justify-content: space-between; padding: 0 8px; border-bottom: 1px solid #20416c; background: #0b1a2d; }
+    .console-title { color: #9cc9f2; font-size: 11px; }
+    .console-clear { border: 0; border-radius: 3px; padding: 3px 7px; background: transparent; color: #9aa0a6; font: inherit; cursor: pointer; }
+    .console-clear:hover, .console-clear:focus-visible { outline: 0; background: #17345a; color: #eef6ff; }
+    .console-output { min-height: calc(100vh - 30px); }
+    .console-row { display: grid; min-height: 24px; grid-template-columns: 22px minmax(0, 1fr); align-items: start; border-bottom: 1px solid #173454; padding: 3px 8px 3px 0; line-height: 18px; }
+    .console-row--warn { background: #332b00; color: #fdd663; }
+    .console-row--error { background: #3c1717; color: #f28b82; }
+    .console-row--info .console-marker { color: #42aaff; }
+    .console-marker { text-align: center; color: #9aa0a6; font-weight: 700; user-select: none; }
+    .console-values { min-width: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+    .token--string { color: #f28b82; }
+    .token--number, .token--boolean { color: #55b4ff; }
+    .token--null, .token--undefined, .token--special, .token--symbol { color: #c58af9; }
+    .token--function, .token--regexp { color: #d7aefb; font-style: italic; }
+    .token--property { color: #80c7ff; }
+    .token--muted { color: #80868b; font-style: italic; }
+    .token--object-preview { color: #e8eaed; }
+    .object-tree { display: inline; }
+    .object-tree > summary { display: inline-flex; max-width: 100%; align-items: baseline; cursor: pointer; list-style: none; }
+    .object-tree > summary::before { display: inline-block; width: 12px; color: #9aa0a6; content: '▶'; font-size: 8px; transform-origin: 45% 50%; transition: transform .1s; }
+    .object-tree[open] > summary::before { transform: rotate(90deg); }
+    .object-tree > summary::-webkit-details-marker { display: none; }
+    .object-tree > summary:focus-visible { border-radius: 2px; outline: 1px solid #39a7ff; }
+    .object-children { margin-left: 6px; padding-left: 13px; border-left: 1px solid #28517e; }
+    .object-property { min-height: 18px; color: #bdc1c6; white-space: nowrap; }
+    .object-prototype { opacity: .78; }
+    .error-value .token--object-preview { color: #f28b82; }
   </style>
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const contodo = new ConTodo(document.querySelector('.console'),{
-        applyCSS: false,
-      });
-    });
-  </script>
-
-
-  <title>Run</title>
 </head>
 <body>
-<div class="console"></div>
-<script>
-  function compile(data){
-    if(worker){
-      worker.postMessage(['', data]);
-      worker.onmessage = (e)=>{
-        const o = document.createElement('script');
-        o.innerHTML = `(function() {
+  <header class="console-toolbar">
+    <span class="console-title">Console</span>
+    <button class="console-clear" type="button" aria-label="Очистить консоль">Очистить</button>
+  </header>
+  <main class="console-output" role="list" aria-live="polite"></main>
+  <script src="/assets/js/devtools-console.js"></script>
+  <script>
+    const workerFile = URL.createObjectURL(new Blob([`
+      importScripts('${window.location.origin}/assets/js/typescript.js');
+      onmessage = ({data: sourceCode}) => postMessage(ts.transpile(sourceCode || ''));
+    `], {type: 'text/javascript'}));
+    const worker = new Worker(workerFile);
+    const pendingRuns = [];
 
-        try{
+    document.querySelector('.console-clear').addEventListener('click', () => console.clear());
 
-         (function(){${e.data}})();
-
-         } catch(e){
-
-         console.error(e);
-
-         }\n            ; setTimeout(()=>console.log('>> --- end ---'));})()`;
-        document.body.appendChild(o);
+    worker.addEventListener('message', ({data}) => {
+      const run = pendingRuns.shift();
+      if (!run) return;
+      try {
+        Function(`"use strict";\n${data}\n//# sourceURL=codelab.ts`)();
+      } catch (error) {
+        console.error(error);
       }
-    }
-  }
-  window.addEventListener("message", (event) => {
-    if(event.data){
-      console.log('>> start');
-      compile(event.data);
-    }
+      console.info('Выполнение завершено');
+    });
 
-  });
-</script>
+    worker.addEventListener('error', event => console.error(event.error || event.message));
+
+    window.addEventListener('message', event => {
+      if (event.origin !== window.location.origin || typeof event.data !== 'string') return;
+      console.info('Выполнение запущено');
+      pendingRuns.push(true);
+      worker.postMessage(event.data);
+    });
+  </script>
 </body>
 </html>

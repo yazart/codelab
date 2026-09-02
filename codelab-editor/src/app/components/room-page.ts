@@ -76,8 +76,30 @@ export class RoomPage extends HTMLElement {
       await new MonacoLoader().load();
       const host = this.querySelector<HTMLElement>('.editor-host');
       if (!host || !this.isConnected) return;
+      monaco.editor.defineTheme('codelab-electric', {
+        base: 'vs-dark',
+        inherit: true,
+        rules: [
+          {token: 'keyword', foreground: '55B4FF'},
+          {token: 'type.identifier', foreground: '80C7FF'},
+          {token: 'string', foreground: 'A8D8FF'},
+          {token: 'number', foreground: '62AFFF'},
+        ],
+        colors: {
+          'editor.background': '#07101E',
+          'editor.foreground': '#EAF5FF',
+          'editorCursor.foreground': '#42AAFF',
+          'editor.lineHighlightBackground': '#0B1A2D',
+          'editor.selectionBackground': '#145A967A',
+          'editor.inactiveSelectionBackground': '#173F6670',
+          'editorLineNumber.foreground': '#456A91',
+          'editorLineNumber.activeForeground': '#80C7FF',
+          'editorIndentGuide.background1': '#173454',
+          'editorIndentGuide.activeBackground1': '#28517E',
+        },
+      });
       const editor = monaco.editor.create(host, {
-        theme: 'vs-dark',
+        theme: 'codelab-electric',
         value: '',
         language: 'typescript',
         automaticLayout: true,
