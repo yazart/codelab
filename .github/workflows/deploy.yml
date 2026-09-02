@@ -64,7 +64,7 @@ jobs:
           server_stage="$RUNNER_TEMP/codelab-server-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
           mkdir -p "$web_stage" "$server_stage"
 
-          cp -a codelab-editor/dist/codelab-editor/browser/. "$web_stage/"
+          cp -a codelab-editor/dist/. "$web_stage/"
           cp -a codelab-server/dist "$server_stage/dist"
           cp codelab-server/package.json codelab-server/package-lock.json "$server_stage/"
           cp codelab-server/ecosystem.config.cjs "$server_stage/"

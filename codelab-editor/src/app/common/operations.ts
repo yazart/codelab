@@ -1,6 +1,4 @@
 import {User} from "../room/user";
-import {InjectionToken} from "@angular/core";
-import {BehaviorSubject} from "rxjs";
 
 export enum OperationType {
   Run = 'run',
@@ -101,7 +99,3 @@ export type Operation = OperationRun
   | OperationLogout
   | OperationCursor
   | OperationSelection;
-
-
-export const OPERATIONS_IN = new InjectionToken<BehaviorSubject<Operation | null>>('stream operations to broadcast');
-export const OPERATIONS_OUT = new InjectionToken<BehaviorSubject<Operation | null>>('stream operations from broadcast');

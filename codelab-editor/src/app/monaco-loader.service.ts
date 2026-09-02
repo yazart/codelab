@@ -1,5 +1,3 @@
-import {Injectable} from '@angular/core';
-
 type MonacoRequire = {
   (dependencies: string[], onLoad: () => void, onError: (error: unknown) => void): void;
   config(options: {paths: {vs: string}}): void;
@@ -10,12 +8,11 @@ type MonacoWindow = Window & {
   require?: MonacoRequire;
 };
 
-@Injectable({providedIn: 'root'})
-export class MonacoLoaderService {
+export class MonacoLoader {
   private loading?: Promise<void>;
 
   load(): Promise<void> {
-    const browserWindow = window as MonacoWindow;
+    const browserWindow = window as unknown as MonacoWindow;
     if (browserWindow.monaco?.editor) {
       return Promise.resolve();
     }
@@ -29,7 +26,7 @@ export class MonacoLoaderService {
             return;
           }
 
-          amdRequire.config({paths: {vs: 'assets/monaco/min/vs'}});
+          amdRequire.config({paths: {vs: '/assets/monaco/min/vs'}});
           amdRequire(['vs/editor/editor.main'], resolve, reject);
         };
 
@@ -41,7 +38,7 @@ export class MonacoLoaderService {
         }
 
         const loader = document.createElement('script');
-        loader.src = 'assets/monaco/min/vs/loader.js';
+        loader.src = '/assets/monaco/min/vs/loader.js';
         loader.async = true;
         loader.dataset['monacoLoader'] = 'true';
         loader.addEventListener('load', loadEditor, {once: true});
