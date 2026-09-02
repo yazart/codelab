@@ -11,6 +11,7 @@ export class RoomPage extends HTMLElement {
   private settings?: AppSettings;
   private connection?: RoomConnection;
   private remote?: RoomRemote;
+  private layoutMedia?: MediaQueryList;
 
   configure(context: RoomContext, settings: AppSettings): void {
     this.context = context;
@@ -31,42 +32,53 @@ export class RoomPage extends HTMLElement {
         </div>
       </header>
       <main class="workspace">
-        <section class="editor-pane" aria-label="Редактор TypeScript">
-          <div class="pane-title"><span>main.ts</span><span class="editor-status">Загрузка редактора…</span></div>
-          <div class="editor-host"></div>
-        </section>
-        <aside class="side-pane">
-          <section class="panel share-panel">
-            <div class="section-heading"><span>Комната</span><small>${this.context.isHost ? 'Организатор' : 'Участник'}</small></div>
-            <div class="copy-row">
-              <input readonly value="${escapeHtml(roomUrl)}" aria-label="Ссылка на комнату">
-              <void-button id="copy-link" size="sm" variant="outline">Копировать</void-button>
-            </div>
-          </section>
-          <section class="panel users-panel">
-            <div class="section-heading"><span>Участники</span><small class="user-count">1 онлайн</small></div>
-            <div class="users-list"></div>
-          </section>
-          <section class="panel console-panel">
-            <div class="section-heading"><span>Результат</span><small>Browser sandbox</small></div>
-            <div class="run-actions">
-              <void-button id="run-code" variant="success">Запустить <span slot="suffix">▶</span></void-button>
-              <void-button id="clear-code" variant="outline">Очистить</void-button>
-            </div>
-            <iframe src="/assets/run.html" title="Результат выполнения кода" sandbox="allow-scripts allow-same-origin"></iframe>
-          </section>
-        </aside>
+        <void-resizable class="room-split" aria-label="Размеры редактора и панели результата">
+          <void-resizable-panel class="editor-split" default-size="65" min-size="35" max-size="80">
+            <section class="editor-pane" aria-label="Редактор TypeScript">
+              <div class="pane-title"><span>main.ts</span><span class="editor-status">Загрузка редактора…</span></div>
+              <div class="editor-host"></div>
+            </section>
+          </void-resizable-panel>
+          <void-resizable-handle with-handle aria-label="Изменить ширину редактора и результата"></void-resizable-handle>
+          <void-resizable-panel class="side-split" default-size="35" min-size="20" max-size="65">
+            <aside class="side-pane">
+              <section class="panel share-panel">
+                <div class="section-heading"><span>Комната</span><small>${this.context.isHost ? 'Организатор' : 'Участник'}</small></div>
+                <div class="copy-row">
+                  <input readonly value="${escapeHtml(roomUrl)}" aria-label="Ссылка на комнату">
+                  <void-button id="copy-link" size="sm" variant="outline">Копировать</void-button>
+                </div>
+              </section>
+              <section class="panel users-panel">
+                <div class="section-heading"><span>Участники</span><small class="user-count">1 онлайн</small></div>
+                <div class="users-list"></div>
+              </section>
+              <section class="panel console-panel">
+                <div class="section-heading"><span>Результат</span><small>Browser sandbox</small></div>
+                <div class="run-actions">
+                  <void-button id="run-code" variant="success">Запустить <span slot="suffix">▶</span></void-button>
+                  <void-button id="clear-code" variant="outline">Очистить</void-button>
+                </div>
+                <iframe src="/assets/run.html" title="Результат выполнения кода" sandbox="allow-scripts allow-same-origin"></iframe>
+              </section>
+            </aside>
+          </void-resizable-panel>
+        </void-resizable>
       </main>`;
 
     this.querySelector('#copy-link')?.addEventListener('click', () => void this.copyRoomUrl(roomUrl));
     this.querySelector('#run-code')?.addEventListener('click', () => this.runCode(true));
     this.querySelector('#clear-code')?.addEventListener('click', () => this.clearConsole(true));
+    this.layoutMedia = window.matchMedia('(max-width: 900px)');
+    this.layoutMedia.addEventListener('change', this.syncSplitDirection);
+    this.syncSplitDirection();
     void this.startEditor();
   }
 
   disconnectedCallback(): void {
     this.connection?.close();
     this.remote?.dispose();
+    this.layoutMedia?.removeEventListener('change', this.syncSplitDirection);
   }
 
   private async startEditor(): Promise<void> {
@@ -131,6 +143,13 @@ export class RoomPage extends HTMLElement {
       console.error(error);
     }
   }
+
+  private readonly syncSplitDirection = (): void => {
+    const split = this.querySelector<HTMLElement & {setSizes(sizes: number[]): void}>('.room-split');
+    if (!split || !this.layoutMedia) return;
+    split.setAttribute('direction', this.layoutMedia.matches ? 'vertical' : 'horizontal');
+    split.setSizes(this.layoutMedia.matches ? [55, 45] : [65, 35]);
+  };
 
   private renderUsers(users: User[]): void {
     const list = this.querySelector('.users-list');
