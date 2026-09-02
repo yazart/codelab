@@ -1,7 +1,9 @@
+import './components/name-dialog';
 import {loadAppSettings, type AppSettings} from './common/app-settings';
-import {NameDialog} from './components/name-dialog';
+import type {NameDialog} from './components/name-dialog';
 import './components/start-page';
-import {RoomPage} from './components/room-page';
+import './components/room-page';
+import type {RoomPage} from './components/room-page';
 import {RoomApi} from './room/room-context';
 
 export class CodelabApp extends HTMLElement {
