@@ -5,6 +5,7 @@ import {RoomConnection} from '../room/room-connection';
 import type {RoomContext} from '../room/room-context';
 import {RoomRemote} from '../room/room-remote';
 import type {User} from '../room/user';
+import {preventPageSave} from '../common/prevent-page-save';
 
 export class RoomPage extends HTMLElement {
   private context?: RoomContext;
@@ -12,6 +13,7 @@ export class RoomPage extends HTMLElement {
   private connection?: RoomConnection;
   private remote?: RoomRemote;
   private layoutMedia?: MediaQueryList;
+  private consoleWindow: Window | null = null;
 
   configure(context: RoomContext, settings: AppSettings): void {
     this.context = context;
@@ -20,6 +22,7 @@ export class RoomPage extends HTMLElement {
 
   connectedCallback(): void {
     if (!this.context || !this.settings) return;
+    window.addEventListener('keydown', preventPageSave, true);
     const roomUrl = `${window.location.origin}/room/${encodeURIComponent(this.context.roomId)}`;
     this.className = 'room-page';
     this.innerHTML = `
@@ -66,6 +69,12 @@ export class RoomPage extends HTMLElement {
         </void-resizable>
       </main>`;
 
+    // Keyboard events in an iframe do not bubble into the parent window.
+    this.querySelector('iframe')?.addEventListener('load', () => {
+      this.consoleWindow?.removeEventListener('keydown', preventPageSave, true);
+      this.consoleWindow = this.querySelector('iframe')?.contentWindow ?? null;
+      this.consoleWindow?.addEventListener('keydown', preventPageSave, true);
+    });
     this.querySelector('#copy-link')?.addEventListener('click', () => void this.copyRoomUrl(roomUrl));
     this.querySelector('#run-code')?.addEventListener('click', () => this.runCode(true));
     this.querySelector('#clear-code')?.addEventListener('click', () => this.clearConsole(true));
@@ -76,6 +85,9 @@ export class RoomPage extends HTMLElement {
   }
 
   disconnectedCallback(): void {
+    window.removeEventListener('keydown', preventPageSave, true);
+    this.consoleWindow?.removeEventListener('keydown', preventPageSave, true);
+    this.consoleWindow = null;
     this.connection?.close();
     this.remote?.dispose();
     this.layoutMedia?.removeEventListener('change', this.syncSplitDirection);
