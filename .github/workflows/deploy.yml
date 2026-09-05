@@ -16,7 +16,7 @@ concurrency:
 jobs:
   deploy:
     name: Build and deploy
-    runs-on: self-hosted
+    runs-on: [self-hosted, Linux, X64, codelab-production]
     timeout-minutes: 20
     env:
       WEB_DEPLOY_DIR: /var/www/codelab/web
@@ -31,7 +31,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
           cache-dependency-path: |
             codelab-editor/package-lock.json
