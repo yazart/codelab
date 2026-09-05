@@ -160,7 +160,7 @@ export class RoomPage extends HTMLElement {
     const split = this.querySelector<HTMLElement & {setSizes(sizes: number[]): void}>('.room-split');
     if (!split || !this.layoutMedia) return;
     split.setAttribute('direction', this.layoutMedia.matches ? 'vertical' : 'horizontal');
-    split.setSizes(this.layoutMedia.matches ? [55, 45] : [65, 35]);
+    split.setSizes(this.layoutMedia.matches ? [50, 50] : [65, 35]);
   };
 
   private renderUsers(users: User[]): void {
