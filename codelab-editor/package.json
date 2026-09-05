@@ -10,7 +10,7 @@
   },
   "private": true,
   "dependencies": {
-    "@void-web-dev/kit": "^0.3.0",
+    "@void-web-dev/kit": "^0.3.1",
     "monaco-editor": "^0.47.0"
   },
   "devDependencies": {

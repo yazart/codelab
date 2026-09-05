@@ -104,8 +104,6 @@ h1, h2 { margin: 0; letter-spacing: -.045em; }
 .room-split { width: 100%; height: 100%; margin-inline: auto; }
 void-resizable-panel.editor-split, void-resizable-panel.side-split { overflow: hidden; }
 void-resizable-handle { --void-border: #20416c; --void-ring: #168fff; }
-/* Compatibility for VoidKit <= 0.3.0, where the vertical-layout selector was invalid. */
-void-resizable-handle[orientation="horizontal"] { width: auto; min-width: 0; height: 1px; min-height: 1px; flex-basis: 1px; }
 .editor-pane { display: grid; width: 100%; height: 100%; min-width: 0; grid-template-rows: 42px minmax(0, 1fr); background: #1e1e1e; }
 .pane-title, .section-heading { display: flex; align-items: center; justify-content: space-between; }
 .pane-title { padding: 0 1rem; border-bottom: 1px solid #193655; color: #d8eaff; font: .75rem ui-monospace, monospace; background: #0a1728; }
