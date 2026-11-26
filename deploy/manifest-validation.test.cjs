@@ -15,7 +15,7 @@ const manifest = {
   commit,
   runId: '123456',
   runAttempt: '1',
-  nodeVersion: 'v22.23.2',
+  nodeVersion: 'v24.20.0',
 };
 const validate = (input, deployAttempt = '2', expectedCommit = commit, expectedRunId = '123456') =>
   vm.runInNewContext(match[1], {
@@ -33,3 +33,4 @@ assert.throws(() => validate(manifest, '2', commit, '123457'), /metadata/);
 assert.throws(() => validate({ ...manifest, runAttempt: '0' }), /metadata/);
 assert.throws(() => validate({ ...manifest, runAttempt: '9007199254740993' }, '9007199254740992'), /metadata/);
 console.log('Deployment manifest rerun validation passed');
+
