@@ -8,7 +8,7 @@ set -Eeuo pipefail
 : "${GITHUB_RUN_ATTEMPT:?GITHUB_RUN_ATTEMPT is required}"
 : "${GITHUB_OUTPUT:?GITHUB_OUTPUT is required}"
 
-test "$(node --version)" = v22.23.2
+test "$(node --version)" = v24.20.0
 stage=$(mktemp -d "$RUNNER_TEMP/codelab-package.XXXXXX")
 smoke_pid=
 cleanup() {
@@ -103,3 +103,4 @@ tar -C "$stage" -czf "$artifact_dir/codelab.tar.gz" web server deploy.sh release
 )
 echo "artifact_dir=$artifact_dir" >> "$GITHUB_OUTPUT"
 echo "artifact_name=codelab-$GITHUB_SHA-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_OUTPUT"
+

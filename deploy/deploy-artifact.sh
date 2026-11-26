@@ -13,9 +13,9 @@ attempt=$4
 [[ $stage = /* && $stage != / && -d $stage && ! -L $stage ]]
 [[ $commit =~ ^[0-9a-f]{40}$ && $run_id =~ ^[0-9]+$ && $attempt =~ ^[0-9]+$ ]]
 
-export PATH="/opt/node-v22.23.2-linux-x64/bin:/usr/local/bin:/usr/bin:/bin"
-test "$(node --version)" = v22.23.2
-pm2_cli=/usr/local/bin/pm2
+export PATH="/usr/local/bin:/usr/bin:/bin"
+test "$(node --version)" = v24.20.0
+pm2_cli=/usr/bin/pm2
 test -x "$pm2_cli"
 
 base=/var/www/codelab
@@ -46,7 +46,7 @@ const positiveInteger = value => typeof value === 'string' && /^[1-9][0-9]*$/.te
 if (manifest.schema !== 1 || manifest.repository !== 'yazart/codelab' ||
     manifest.commit !== commit || manifest.runId !== runId ||
     !positiveInteger(manifest.runAttempt) || !positiveInteger(runAttempt) ||
-    BigInt(manifest.runAttempt) > BigInt(runAttempt) || manifest.nodeVersion !== 'v22.23.2') {
+    BigInt(manifest.runAttempt) > BigInt(runAttempt) || manifest.nodeVersion !== 'v24.20.0') {
   throw new Error('Artifact release metadata does not match this deployment');
 }
 NODE
@@ -148,3 +148,4 @@ while IFS= read -r candidate; do
 done < <(find "$releases" -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' | sort -nr | cut -d ' ' -f2-)
 
 echo "Codelab deployed: $release_id"
+

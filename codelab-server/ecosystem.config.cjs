@@ -4,7 +4,7 @@ module.exports = {
       name: 'codelab-server',
       cwd: '/var/www/codelab/server',
       script: 'dist/main.js',
-      interpreter: '/opt/node-v22.23.2-linux-x64/bin/node',
+      interpreter: '/usr/bin/node',
       instances: 1,
       exec_mode: 'fork',
       autorestart: true,
@@ -17,3 +17,4 @@ module.exports = {
     },
   ],
 };
+
